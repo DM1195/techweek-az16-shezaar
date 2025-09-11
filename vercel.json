@@ -2,7 +2,11 @@
   "functions": {
     "api/**/*.js": {
       "runtime": "now-php@1.0.0"
-    }
+    },
+    
+    "api/**/*.py": {
+          "runtime": "@vercel/python@3.9"
+        }
   }
 }
 
