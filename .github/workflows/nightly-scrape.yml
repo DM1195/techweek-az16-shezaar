@@ -1,0 +1,56 @@
+name: Nightly Scrape and Upsert
+
+on:
+  schedule:
+    - cron: '0 9 * * *'  # 9:00 UTC daily
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: nightly-scrape
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scraper/requirements.txt
+
+      - name: Install Playwright browsers and OS deps
+        uses: microsoft/playwright-github-action@v1
+
+      - name: Install Chromium for Python Playwright
+        run: python -m playwright install chromium
+
+      - name: Run scraper and upsert to Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python scraper/scrape_tech_week_sf.py \
+            --supabase \
+            --table "Event List" \
+            --on-conflict event_name_and_link \
+            --composite-key-col event_name_and_link \
+            --year 2025 \
+            --price-numeric \
+            --coerce-time \
+            --no-null \
+            --max-cycles 1500 \
+            --stable-rounds 12 \
+            --scroll-delay 1.0 \
+            --load-more-delay 1.5 \
+            --dwell-every 10 \
+            --dwell-seconds 3.0
+

@@ -9,7 +9,6 @@
     "node": ">=18"
   },
   "scripts": {
-    "dev": "vercel dev",
     "start": "node api/get-events.js"
   },
   "dependencies": {
@@ -17,4 +16,3 @@
     "openai": "^4.55.4"
   }
 }
-

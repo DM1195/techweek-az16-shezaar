@@ -60,10 +60,20 @@ async function fetchEvents(supabase, { q, limit = 100 }) {
 
 function runPythonScraperAsJson() {
   return new Promise((resolve, reject) => {
-    // Prefer scraper colocated in project root; fallback to repo root if present
-    const localPath = path.resolve(__dirname, '..', 'scrape_tech_week_sf.py');
-    const fallbackPath = path.resolve(__dirname, '..', '..', 'scrape_tech_week_sf.py');
-    const scraperPath = require('fs').existsSync(localPath) ? localPath : fallbackPath;
+    // Try common locations based on current structure:
+    // - app/scrape_tech_week_sf.py (not present by default)
+    // - scraper/scrape_tech_week_sf.py (one level up from app/)
+    // - repo root scrape_tech_week_sf.py (legacy)
+    const fs = require('fs');
+    const candidates = [
+      path.resolve(__dirname, '..', 'scrape_tech_week_sf.py'),
+      path.resolve(__dirname, '..', '..', 'scraper', 'scrape_tech_week_sf.py'),
+      path.resolve(__dirname, '..', '..', 'scrape_tech_week_sf.py')
+    ];
+    const scraperPath = candidates.find(p => fs.existsSync(p));
+    if (!scraperPath) {
+      return reject(new Error('Scraper not found. Expected at app/scrape_tech_week_sf.py or ../scraper/scrape_tech_week_sf.py'));
+    }
     const cwd = path.resolve(__dirname, '..');
     const proc = spawn('python3', [scraperPath, '--json'], { cwd });
 

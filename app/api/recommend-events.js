@@ -118,7 +118,7 @@ async function ensureEmbeddingsForEvents(openai, supabase, events) {
     const resp = await openai.embeddings.create({ model: EMBEDDING_MODEL, input: slice });
     const vectors = resp.data.map((d) => d.embedding);
     const updates = missing.slice(i, i + batchSize).map((e, idx) => ({ id: e.id, embedding: vectors[idx] }));
-    const { error } = await supabase.from('events').upsert(updates).select('id');
+    const { error } = await supabase.from(TABLE).upsert(updates).select('id');
     if (error) {
       // If the column doesn't exist, give up silently; caller will fall back to text ranking
       if (!/column .*embedding.* does not exist/i.test(error.message)) {
