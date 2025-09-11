@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "buildCommand": "cd app && npm install",
+  "outputDirectory": "app",
+  "functions": {
+    "app/api/**/*.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "rewrites": [
+    { "source": "/", "destination": "/app/index.html" }
+  ]
+}
