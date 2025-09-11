@@ -73,52 +73,27 @@ function buildTextFilters(prefs) {
 }
 
 async function fetchCandidateEvents(supabase, prefs, limit = 200) {
+  // Simplified query approach to avoid JSON operator errors
   let query = supabase
     .from(TABLE)
     .select('*')
     .order('created_at', { ascending: false })
     .limit(limit);
 
-  const orConditions = [];
-
-  const likes = buildTextFilters(prefs);
-  if (likes.length) {
-    const ors = likes.flatMap((like) => [
-      `event_name.ilike.%${like}%`,
-      `event_description.ilike.%${like}%`,
-      `event_location.ilike.%${like}%`,
-      `hosted_by.ilike.%${like}%`,
-    ]);
-    orConditions.push(...ors);
-  }
-
-  // Day/time filters are best with normalized columns; for now, match text tokens
-  if (Array.isArray(prefs.day_of_week) && prefs.day_of_week.length) {
-    const tokens = sanitizeLikeValue(prefs.day_of_week.join('|'));
-    if (tokens) {
-      orConditions.push(
-        `event_date.ilike.%${tokens}%`,
-        `event_description.ilike.%${tokens}%`
-      );
-    }
-  }
-
-  if (prefs.time_window) {
-    const token = sanitizeLikeValue(prefs.time_window);
-    if (token) {
-      orConditions.push(
-        `event_time.ilike.%${token}%`,
-        `event_description.ilike.%${token}%`
-      );
-    }
-  }
-
-  if (orConditions.length) {
-    query = query.or(orConditions.join(','));
+  // Build a simple text search using the keywords
+  const keywords = prefs.keywords || '';
+  if (keywords.trim()) {
+    const searchTerm = keywords.trim();
+    query = query.or(
+      `event_name.ilike.%${searchTerm}%,event_description.ilike.%${searchTerm}%,event_location.ilike.%${searchTerm}%,hosted_by.ilike.%${searchTerm}%`
+    );
   }
 
   const { data, error } = await query;
-  if (error) throw error;
+  if (error) {
+    console.error('Database query error:', error);
+    throw error;
+  }
   return data || [];
 }
 
