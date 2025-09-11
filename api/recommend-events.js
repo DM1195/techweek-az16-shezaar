@@ -2,6 +2,7 @@ const { getSupabaseClient } = require('./_supabase');
 const { getOpenAI } = require('./_openai');
 
 const TABLE = process.env.EVENTS_TABLE || 'Event List';
+const QUERIES_TABLE = process.env.QUERIES_TABLE || 'Query';
 
 function sanitizeLikeValue(s) {
   if (!s || typeof s !== 'string') return '';
@@ -61,7 +62,7 @@ function buildTextFilters(prefs) {
   const likes = [];
   const add = (s) => {
     const cleaned = sanitizeLikeValue(s);
-    if (cleaned) likes.push(`%${cleaned}%`);
+    if (cleaned) likes.push(cleaned);
   };
   for (const g of prefs.goals || []) add(g);
   for (const ind of prefs.industries || []) add(ind);
@@ -83,10 +84,10 @@ async function fetchCandidateEvents(supabase, prefs, limit = 200) {
   const likes = buildTextFilters(prefs);
   if (likes.length) {
     const ors = likes.flatMap((like) => [
-      `event_name.ilike.${like}`,
-      `event_description.ilike.${like}`,
-      `event_location.ilike.${like}`,
-      `hosted_by.ilike.${like}`,
+      `event_name.ilike.%${like}%`,
+      `event_description.ilike.%${like}%`,
+      `event_location.ilike.%${like}%`,
+      `hosted_by.ilike.%${like}%`,
     ]);
     orConditions.push(...ors);
   }
@@ -175,6 +176,32 @@ async function rankWithEmbeddings(openai, supabase, prefs, candidates, topK = 10
   return scored.slice(0, topK).map((x) => x.e);
 }
 
+async function saveQuery(supabase, message, prefs, results) {
+  try {
+    const queryData = {
+      user_message: message,
+      extracted_preferences: prefs,
+      results_count: results.length,
+      created_at: new Date().toISOString()
+    };
+    
+    const { data, error } = await supabase
+      .from(QUERIES_TABLE)
+      .insert([queryData])
+      .select('id');
+    
+    if (error) {
+      console.error('Error saving query:', error);
+      // Don't throw error - query logging is optional
+    } else {
+      console.log('Query saved with ID:', data?.[0]?.id);
+    }
+  } catch (err) {
+    console.error('Error in saveQuery:', err);
+    // Don't throw error - query logging is optional
+  }
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -210,6 +237,9 @@ module.exports = async (req, res) => {
       price: e.price,
       url: e.event_url
     }));
+
+    // 5) Save query to database (optional - won't fail if table doesn't exist)
+    await saveQuery(supabase, message, prefs, results);
 
     return res.status(200).json({ ok: true, prefs, results, count: results.length });
   } catch (err) {

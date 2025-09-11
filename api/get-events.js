@@ -48,13 +48,12 @@ async function fetchEvents(supabase, { q, limit = 100 }) {
   if (q) {
     const cleaned = sanitizeLikeValue(q);
     if (cleaned) {
-      const like = `%${cleaned}%`;
       query = query.or(
         [
-          `event_name.ilike.${like}`,
-          `event_description.ilike.${like}`,
-          `event_location.ilike.${like}`,
-          `hosted_by.ilike.${like}`
+          `event_name.ilike.%${cleaned}%`,
+          `event_description.ilike.%${cleaned}%`,
+          `event_location.ilike.%${cleaned}%`,
+          `hosted_by.ilike.%${cleaned}%`
         ].join(',')
       );
     }

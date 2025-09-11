@@ -9,15 +9,14 @@ try {
 
 async function searchEvents(supabase, query, limit = 10) {
   if (!query) return [];
-  const like = `%${query}%`;
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')
     .or([
-      `event_name.ilike.${like}`,
-      `event_description.ilike.${like}`,
-      `event_location.ilike.${like}`,
-      `hosted_by.ilike.${like}`
+      `event_name.ilike.%${query}%`,
+      `event_description.ilike.%${query}%`,
+      `event_location.ilike.%${query}%`,
+      `hosted_by.ilike.%${query}%`
     ].join(','))
     .limit(limit);
   if (error) throw error;
