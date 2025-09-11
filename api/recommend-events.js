@@ -102,13 +102,34 @@ async function fetchCandidateEvents(supabase, prefs, limit = 200) {
     if (prefs.location) {
       searchTerms.push(prefs.location);
     }
+    
+    console.log('Search terms:', searchTerms);
 
     // If we have search terms, use them to filter events
     if (searchTerms.length > 0) {
-      const searchQuery = searchTerms.join(' ');
-      query = query.or(
-        `event_name.ilike.%${searchQuery}%,event_description.ilike.%${searchQuery}%,event_location.ilike.%${searchQuery}%,hosted_by.ilike.%${searchQuery}%`
-      );
+      // Clean search terms and create individual search conditions
+      const cleanTerms = searchTerms
+        .filter(term => term && term.trim())
+        .map(term => term.trim())
+        .slice(0, 5); // Limit to 5 terms to avoid query complexity
+      
+      if (cleanTerms.length > 0) {
+        // Create OR conditions for each search term
+        const orConditions = [];
+        for (const term of cleanTerms) {
+          // Escape special characters
+          const escapedTerm = term.replace(/[%_\\]/g, '\\$&');
+          orConditions.push(
+            `event_name.ilike.%${escapedTerm}%`,
+            `event_description.ilike.%${escapedTerm}%`,
+            `event_location.ilike.%${escapedTerm}%`,
+            `hosted_by.ilike.%${escapedTerm}%`
+          );
+        }
+        
+        query = query.or(orConditions.join(','));
+        console.log('Query conditions:', orConditions.join(','));
+      }
     }
 
     const { data, error } = await query;

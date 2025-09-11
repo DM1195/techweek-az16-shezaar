@@ -10,8 +10,8 @@
       body { 
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; 
         margin: 0; 
-        background: linear-gradient(135deg, #0b0c10 0%, #1a1d29 100%);
-        color: #fff; 
+        background: #2c3424;
+        color: #daded8; 
         min-height: 100vh;
         line-height: 1.6;
       }
@@ -23,16 +23,64 @@
         min-height: 100vh;
         display: flex;
         flex-direction: column;
-        justify-content: center;
+        justify-content: space-between;
+      }
+      
+      .header {
+        margin-bottom: 40px;
+      }
+      
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      
+      .logo-img {
+        height: 40px;
+        width: auto;
+      }
+      
+      .logo-text {
+        font-size: 24px;
+        font-weight: 700;
+        color: #daded8;
+        letter-spacing: 2px;
+      }
+      
+      .footer {
+        margin-top: 60px;
+        text-align: center;
+        padding: 20px 0;
+        border-top: 1px solid rgba(218, 222, 216, 0.2);
+      }
+      
+      .footer p {
+        color: rgba(218, 222, 216, 0.7);
+        font-size: 14px;
+        margin: 0;
+      }
+      
+      .shezaar-link {
+        color: #daded8;
+        text-decoration: none;
+        font-weight: 600;
+        border-bottom: 1px solid transparent;
+        transition: all 0.3s ease;
+      }
+      
+      .shezaar-link:hover {
+        border-bottom-color: #daded8;
+        color: #daded8;
       }
       
       .card { 
-        background: rgba(18, 20, 26, 0.8); 
+        background: rgba(76, 88, 62, 0.3); 
         backdrop-filter: blur(20px);
-        border: 1px solid rgba(34, 38, 49, 0.5); 
+        border: 1px solid rgba(218, 222, 216, 0.2); 
         border-radius: 20px; 
         padding: 32px; 
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
         transition: all 0.3s ease;
       }
       
@@ -44,15 +92,12 @@
       h1 { 
         font-size: 28px; 
         margin: 0 0 16px; 
-        background: linear-gradient(135deg, #5b8cff, #8ab4ff);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        color: #daded8;
         font-weight: 700;
       }
       
       .subtitle {
-        color: #a8b3cf;
+        color: rgba(218, 222, 216, 0.8);
         font-size: 16px;
         margin-bottom: 24px;
         line-height: 1.5;
@@ -62,9 +107,9 @@
         width: 100%; 
         min-height: 140px; 
         border-radius: 12px; 
-        border: 2px solid rgba(48, 54, 69, 0.5); 
-        background: rgba(14, 16, 22, 0.8); 
-        color: #fff; 
+        border: 2px solid rgba(218, 222, 216, 0.3); 
+        background: rgba(44, 52, 36, 0.6); 
+        color: #daded8; 
         padding: 16px; 
         resize: vertical; 
         font-size: 16px;
@@ -74,13 +119,13 @@
       }
       
       textarea:focus {
-        border-color: #5b8cff;
-        box-shadow: 0 0 0 3px rgba(91, 140, 255, 0.1);
-        background: rgba(14, 16, 22, 0.9);
+        border-color: #daded8;
+        box-shadow: 0 0 0 3px rgba(218, 222, 216, 0.2);
+        background: rgba(44, 52, 36, 0.8);
       }
       
       textarea::placeholder {
-        color: #6b7280;
+        color: rgba(218, 222, 216, 0.6);
       }
       
       .row { 
@@ -92,8 +137,8 @@
       }
       
       button { 
-        background: linear-gradient(135deg, #5b8cff, #4c6ef5);
-        color: #fff; 
+        background: #daded8;
+        color: #2c3424; 
         border: none; 
         padding: 14px 24px; 
         border-radius: 12px; 
@@ -101,13 +146,13 @@
         font-size: 16px;
         font-weight: 600;
         transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(91, 140, 255, 0.3);
+        box-shadow: 0 4px 15px rgba(218, 222, 216, 0.3);
       }
       
       button:hover:not([disabled]) {
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(91, 140, 255, 0.4);
-        background: linear-gradient(135deg, #4c6ef5, #3b5bdb);
+        box-shadow: 0 6px 20px rgba(218, 222, 216, 0.4);
+        background: rgba(218, 222, 216, 0.9);
       }
       
       button[disabled] { 
@@ -117,7 +162,7 @@
       }
       
       .status {
-        color: #a8b3cf;
+        color: rgba(218, 222, 216, 0.8);
         font-size: 14px;
         font-style: italic;
       }
@@ -134,15 +179,15 @@
       
       .event { 
         padding: 20px; 
-        border-bottom: 1px solid rgba(34, 38, 49, 0.5); 
+        border-bottom: 1px solid rgba(218, 222, 216, 0.2); 
         transition: all 0.3s ease;
         border-radius: 8px;
         margin-bottom: 8px;
-        background: rgba(18, 20, 26, 0.3);
+        background: rgba(76, 88, 62, 0.2);
       }
       
       .event:hover {
-        background: rgba(18, 20, 26, 0.6);
+        background: rgba(76, 88, 62, 0.4);
         transform: translateX(4px);
       }
       
@@ -155,11 +200,11 @@
         font-size: 18px;
         font-weight: 600;
         margin-bottom: 8px;
-        color: #fff;
+        color: #daded8;
       }
       
       .event-meta {
-        color: #a8b3cf;
+        color: rgba(218, 222, 216, 0.8);
         font-size: 14px;
         margin-bottom: 6px;
         display: flex;
@@ -168,40 +213,42 @@
       }
       
       .event-host {
-        color: #8ab4ff;
+        color: rgba(218, 222, 216, 0.9);
         font-size: 14px;
         margin-bottom: 12px;
       }
       
       .event-link {
-        color: #5b8cff;
+        color: #daded8;
         text-decoration: none;
         font-weight: 500;
         display: inline-flex;
         align-items: center;
         gap: 6px;
         transition: all 0.3s ease;
+        border-bottom: 1px solid transparent;
       }
       
       .event-link:hover {
-        color: #8ab4ff;
+        color: #daded8;
+        border-bottom-color: #daded8;
         transform: translateX(2px);
       }
       
       .prefs-display {
-        background: rgba(91, 140, 255, 0.1);
-        border: 1px solid rgba(91, 140, 255, 0.2);
+        background: rgba(76, 88, 62, 0.3);
+        border: 1px solid rgba(218, 222, 216, 0.2);
         border-radius: 8px;
         padding: 12px;
         margin-bottom: 20px;
         font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
         font-size: 13px;
-        color: #a8b3cf;
+        color: rgba(218, 222, 216, 0.8);
         overflow-x: auto;
       }
       
       .small { 
-        color: #a8b3cf; 
+        color: rgba(218, 222, 216, 0.8); 
         font-size: 14px; 
       }
       
@@ -213,9 +260,9 @@
         display: inline-block;
         width: 20px;
         height: 20px;
-        border: 2px solid rgba(91, 140, 255, 0.3);
+        border: 2px solid rgba(218, 222, 216, 0.3);
         border-radius: 50%;
-        border-top-color: #5b8cff;
+        border-top-color: #daded8;
         animation: spin 1s ease-in-out infinite;
       }
       
@@ -224,9 +271,9 @@
       }
       
       .error {
-        background: rgba(239, 68, 68, 0.1);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        color: #fca5a5;
+        background: rgba(218, 222, 216, 0.1);
+        border: 1px solid rgba(218, 222, 216, 0.3);
+        color: #daded8;
         padding: 12px;
         border-radius: 8px;
         margin-top: 16px;
@@ -238,11 +285,21 @@
         h1 { font-size: 24px; }
         .row { flex-direction: column; align-items: stretch; }
         button { width: 100%; }
+        .logo-img { height: 32px; }
+        .logo-text { font-size: 20px; }
+        .footer { margin-top: 40px; }
       }
     </style>
   </head>
   <body>
     <div class="wrap">
+      <header class="header">
+        <div class="logo">
+          <img src="./shezaar-logo.png" alt="Shezaar" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+          <div class="logo-text" style="display: none;">SHEZAAR</div>
+        </div>
+      </header>
+      
       <div class="card">
         <h1>Find Your Perfect SF Tech Week Events</h1>
         <p class="subtitle">Tell us about your goals and we'll recommend the most relevant events for you. Whether you're looking for investors, co-founders, talent, or just want to network with like-minded people.</p>
@@ -257,6 +314,10 @@
         <div class="prefs-display" id="prefs"></div>
         <div id="events"></div>
       </div>
+      
+      <footer class="footer">
+        <p>Powered by the minds behind <a href="https://www.shezaar.com" target="_blank" rel="noopener" class="shezaar-link">Shezaar</a></p>
+      </footer>
     </div>
 
     <script>
@@ -284,8 +345,8 @@
           prefsEl.textContent = 'Parsed preferences: ' + JSON.stringify(data.prefs);
           
           if (data.results && data.results.length > 0) {
-            eventsEl.innerHTML = data.results.map(r => `
-              <div class="event">
+          eventsEl.innerHTML = data.results.map(r => `
+            <div class="event">
                 <div class="event-title">${r.name}</div>
                 <div class="event-meta">
                   <span>📅 ${r.date || 'TBA'}</span>
@@ -295,8 +356,8 @@
                 </div>
                 <div class="event-host">👤 Host: ${r.host || 'TBA'}</div>
                 <div><a href="${r.url}" target="_blank" rel="noopener" class="event-link">View details →</a></div>
-              </div>
-            `).join('');
+            </div>
+          `).join('');
           } else {
             eventsEl.innerHTML = `
               <div class="event">
