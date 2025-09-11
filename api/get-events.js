@@ -1,6 +1,4 @@
 const { getSupabaseClient } = require('./_supabase');
-const { spawn } = require('child_process');
-const path = require('path');
 
 const TABLE = process.env.EVENTS_TABLE || 'Event List';
 const CONFLICT_COL = process.env.EVENTS_ON_CONFLICT || 'event_name_and_link';
@@ -67,47 +65,6 @@ async function fetchEvents(supabase, { q, limit = 100 }) {
   return data || [];
 }
 
-function runPythonScraperAsJson() {
-  return new Promise((resolve, reject) => {
-    // Try common locations based on current structure:
-    // - app/scrape_tech_week_sf.py (not present by default)
-    // - scraper/scrape_tech_week_sf.py (one level up from app/)
-    // - repo root scrape_tech_week_sf.py (legacy)
-    const fs = require('fs');
-    const candidates = [
-      path.resolve(__dirname, '..', 'scrape_tech_week_sf.py'),
-      path.resolve(__dirname, '..', '..', 'scraper', 'scrape_tech_week_sf.py'),
-      path.resolve(__dirname, '..', '..', 'scrape_tech_week_sf.py')
-    ];
-    const scraperPath = candidates.find(p => fs.existsSync(p));
-    if (!scraperPath) {
-      return reject(new Error('Scraper not found. Expected at app/scrape_tech_week_sf.py or ../scraper/scrape_tech_week_sf.py'));
-    }
-    const cwd = path.resolve(__dirname, '..');
-    const proc = spawn('python3', [scraperPath, '--json'], { cwd });
-
-    let stdout = '';
-    let stderr = '';
-    proc.stdout.on('data', (chunk) => (stdout += chunk.toString()));
-    proc.stderr.on('data', (chunk) => (stderr += chunk.toString()));
-    proc.on('error', (err) => reject(err));
-    proc.on('close', (code) => {
-      if (code !== 0) {
-        return reject(new Error(`Scraper exited with code ${code}: ${stderr}`));
-      }
-      try {
-        // The scraper prints progress + JSON; try to extract JSON from the last line if needed
-        const trimmed = stdout.trim();
-        const maybeJson = trimmed.startsWith('[') ? trimmed : trimmed.split('\n').find((l) => l.trim().startsWith('[')) || trimmed;
-        const events = JSON.parse(maybeJson);
-        resolve(events);
-      } catch (e) {
-        reject(new Error(`Failed to parse scraper output as JSON: ${e.message}\n--- stdout ---\n${stdout}\n--- stderr ---\n${stderr}`));
-      }
-    });
-  });
-}
-
 // Vercel-style default export handler
 module.exports = async (req, res) => {
   const supabase = getSupabaseClient();
@@ -121,14 +78,16 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      // Optional: allow `mode=refresh` to force re-scrape
-      const mode = (req.query.mode || req.body?.mode || 'refresh').toString();
-      if (mode !== 'refresh') {
-        return res.status(400).json({ ok: false, error: 'Unsupported mode' });
+      // For POST requests, expect events data in the body to upsert
+      const { events } = req.body || {};
+      
+      if (!Array.isArray(events) || events.length === 0) {
+        return res.status(400).json({ 
+          ok: false, 
+          error: 'Expected events array in request body' 
+        });
       }
 
-      // Run the local Python scraper and upsert results to Supabase
-      const events = await runPythonScraperAsJson();
       const { count } = await upsertEvents(supabase, events);
       return res.status(200).json({ ok: true, upserted: count });
     }
