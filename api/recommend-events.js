@@ -73,28 +73,56 @@ function buildTextFilters(prefs) {
 }
 
 async function fetchCandidateEvents(supabase, prefs, limit = 200) {
-  // Simplified query approach to avoid JSON operator errors
-  let query = supabase
-    .from(TABLE)
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(limit);
+  try {
+    let query = supabase
+      .from(TABLE)
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
-  // Build a simple text search using the keywords
-  const keywords = prefs.keywords || '';
-  if (keywords.trim()) {
-    const searchTerm = keywords.trim();
-    query = query.or(
-      `event_name.ilike.%${searchTerm}%,event_description.ilike.%${searchTerm}%,event_location.ilike.%${searchTerm}%,hosted_by.ilike.%${searchTerm}%`
-    );
-  }
+    // Build search terms from extracted preferences
+    const searchTerms = [];
+    
+    // Add keywords from the user message
+    if (prefs.keywords) {
+      searchTerms.push(prefs.keywords);
+    }
+    
+    // Add industries
+    if (prefs.industries && prefs.industries.length > 0) {
+      searchTerms.push(...prefs.industries);
+    }
+    
+    // Add goals
+    if (prefs.goals && prefs.goals.length > 0) {
+      searchTerms.push(...prefs.goals);
+    }
+    
+    // Add location if specified
+    if (prefs.location) {
+      searchTerms.push(prefs.location);
+    }
 
-  const { data, error } = await query;
-  if (error) {
-    console.error('Database query error:', error);
-    throw error;
+    // If we have search terms, use them to filter events
+    if (searchTerms.length > 0) {
+      const searchQuery = searchTerms.join(' ');
+      query = query.or(
+        `event_name.ilike.%${searchQuery}%,event_description.ilike.%${searchQuery}%,event_location.ilike.%${searchQuery}%,hosted_by.ilike.%${searchQuery}%`
+      );
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('Database query error:', error);
+      throw error;
+    }
+    
+    console.log(`Found ${data?.length || 0} candidate events`);
+    return data || [];
+  } catch (err) {
+    console.error('Error in fetchCandidateEvents:', err);
+    throw err;
   }
-  return data || [];
 }
 
 async function ensureEmbeddingsForEvents(openai, supabase, events) {
@@ -189,17 +217,25 @@ module.exports = async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Missing message' });
     }
 
+    console.log('Processing query:', message);
+
     const supabase = getSupabaseClient();
     const openai = getOpenAI();
 
-    // 1) Extract structured preferences
+    // 1) Extract structured preferences using OpenAI
+    console.log('Extracting preferences...');
     const prefs = await extractPreferences(message, openai);
+    console.log('Extracted preferences:', prefs);
 
     // 2) Pull text-matched candidates from DB
+    console.log('Fetching candidate events...');
     const candidates = await fetchCandidateEvents(supabase, prefs, Math.max(50, limit * 10));
+    console.log(`Found ${candidates.length} candidate events`);
 
     // 3) Rank with embeddings when available
+    console.log('Ranking events...');
     const ranked = await rankWithEmbeddings(openai, supabase, prefs, candidates, limit);
+    console.log(`Ranked to ${ranked.length} events`);
 
     // 4) Shape minimal response
     const results = ranked.map((e) => ({
@@ -216,9 +252,22 @@ module.exports = async (req, res) => {
     // 5) Save query to database (optional - won't fail if table doesn't exist)
     await saveQuery(supabase, message, prefs, results);
 
+    console.log(`Returning ${results.length} results`);
+    
+    // If no results found, provide helpful message
+    if (results.length === 0) {
+      return res.status(200).json({ 
+        ok: true, 
+        prefs, 
+        results: [], 
+        count: 0,
+        message: 'No events found matching your criteria. Try broadening your search terms or check back later for new events.'
+      });
+    }
+
     return res.status(200).json({ ok: true, prefs, results, count: results.length });
   } catch (err) {
-    console.error(err);
+    console.error('Error in recommend-events:', err);
     return res.status(500).json({ ok: false, error: err.message });
   }
 };
