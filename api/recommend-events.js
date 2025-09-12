@@ -104,11 +104,13 @@ function buildTextFilters(prefs) {
 
 async function fetchCandidateEvents(supabase, prefs, limit = 200) {
   try {
+    console.log('🔧 Building base query...');
     let query = supabase
       .from(TABLE)
       .select('*')
       .order('created_at', { ascending: false })
       .limit(limit);
+    console.log('✅ Base query built');
 
     // Build search terms from extracted preferences
     const searchTerms = [];
@@ -145,7 +147,7 @@ async function fetchCandidateEvents(supabase, prefs, limit = 200) {
       searchTerms.push('founder', 'co-founder', 'startup', 'entrepreneur', 'founders');
     }
     
-    console.log('Search terms:', searchTerms);
+    console.log('🔧 Search terms built:', searchTerms);
 
     // If we have search terms, use them to filter events
     if (searchTerms.length > 0) {
@@ -155,32 +157,44 @@ async function fetchCandidateEvents(supabase, prefs, limit = 200) {
         .map(term => term.trim())
         .filter(term => term.length > 1))]; // Remove single character terms
       
+      console.log('🔧 Clean terms:', cleanTerms);
+      
       if (cleanTerms.length > 0) {
         // Create a single search string like the working get-events.js approach
         const searchString = cleanTerms.slice(0, 5).join(' '); // Join terms with spaces
         const cleaned = sanitizeLikeValue(searchString);
         
+        console.log('🔧 Search string:', searchString);
+        console.log('🔧 Cleaned string:', cleaned);
+        
         if (cleaned) {
-          console.log('Search string:', cleaned);
+          console.log('🔧 Applying search filter...');
           
-          // Use the same pattern as get-events.js but include event_tags
+          // Use the same pattern as get-events.js (event_tags removed due to JSON type)
           query = query.or(
-            `event_name.ilike.%${cleaned}%,event_description.ilike.%${cleaned}%,event_location.ilike.%${cleaned}%,hosted_by.ilike.%${cleaned}%,event_tags.ilike.%${cleaned}%`
+            `event_name.ilike.%${cleaned}%,event_description.ilike.%${cleaned}%,event_location.ilike.%${cleaned}%,hosted_by.ilike.%${cleaned}%`
           );
+          console.log('✅ Search filter applied');
         }
       }
+    } else {
+      console.log('⚠️ No search terms, using base query');
     }
 
+    console.log('🔧 Executing database query...');
     const { data, error } = await query;
+    
     if (error) {
-      console.error('Database query error:', error);
+      console.error('❌ Database query error:', error);
+      console.error('❌ Error details:', JSON.stringify(error, null, 2));
       throw error;
     }
     
-    console.log(`Found ${data?.length || 0} candidate events`);
+    console.log(`✅ Found ${data?.length || 0} candidate events`);
     return data || [];
   } catch (err) {
-    console.error('Error in fetchCandidateEvents:', err);
+    console.error('❌ Error in fetchCandidateEvents:', err);
+    console.error('❌ Error stack:', err.stack);
     throw err;
   }
 }
@@ -241,6 +255,7 @@ async function rankWithEmbeddings(openai, supabase, prefs, candidates, topK = 10
 
 async function saveQuery(supabase, message, prefs, results) {
   try {
+    console.log('🔧 Preparing query data for saving...');
     const queryData = {
       user_message: message,
       extracted_preferences: prefs,
@@ -248,25 +263,35 @@ async function saveQuery(supabase, message, prefs, results) {
       created_at: new Date().toISOString()
     };
     
+    console.log('🔧 Query data:', JSON.stringify(queryData, null, 2));
+    console.log('🔧 Attempting to save to table:', QUERIES_TABLE);
+    
     const { data, error } = await supabase
       .from(QUERIES_TABLE)
       .insert([queryData])
       .select('id');
     
     if (error) {
-      console.error('Error saving query:', error);
+      console.error('❌ Error saving query:', error);
+      console.error('❌ Error details:', JSON.stringify(error, null, 2));
       // Don't throw error - query logging is optional
     } else {
-      console.log('Query saved with ID:', data?.[0]?.id);
+      console.log('✅ Query saved with ID:', data?.[0]?.id);
     }
   } catch (err) {
-    console.error('Error in saveQuery:', err);
+    console.error('❌ Error in saveQuery:', err);
+    console.error('❌ Error stack:', err.stack);
     // Don't throw error - query logging is optional
   }
 }
 
 module.exports = async (req, res) => {
+  console.log('=== RECOMMEND-EVENTS API CALLED ===');
+  console.log('Method:', req.method);
+  console.log('Body:', JSON.stringify(req.body, null, 2));
+  
   if (req.method !== 'POST') {
+    console.log('❌ Method not allowed:', req.method);
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
   }
@@ -274,30 +299,38 @@ module.exports = async (req, res) => {
   try {
     const { message, limit = 10 } = req.body || {};
     if (!message || typeof message !== 'string') {
+      console.log('❌ Missing or invalid message');
       return res.status(400).json({ ok: false, error: 'Missing message' });
     }
 
-    console.log('Processing query:', message);
+    console.log('✅ Processing query:', message);
+    console.log('✅ Limit:', limit);
 
+    console.log('🔧 Initializing Supabase client...');
     const supabase = getSupabaseClient();
+    console.log('✅ Supabase client initialized');
+
+    console.log('🔧 Initializing OpenAI client...');
     const openai = getOpenAI();
+    console.log('✅ OpenAI client initialized:', openai ? 'Available' : 'Not available');
 
     // 1) Extract structured preferences using OpenAI
-    console.log('Extracting preferences...');
+    console.log('🔧 Step 1: Extracting preferences...');
     const prefs = await extractPreferences(message, openai);
-    console.log('Extracted preferences:', prefs);
+    console.log('✅ Extracted preferences:', JSON.stringify(prefs, null, 2));
 
     // 2) Pull text-matched candidates from DB
-    console.log('Fetching candidate events...');
+    console.log('🔧 Step 2: Fetching candidate events...');
     const candidates = await fetchCandidateEvents(supabase, prefs, Math.max(50, limit * 10));
-    console.log(`Found ${candidates.length} candidate events`);
+    console.log(`✅ Found ${candidates.length} candidate events`);
 
     // 3) Rank with embeddings when available
-    console.log('Ranking events...');
+    console.log('🔧 Step 3: Ranking events...');
     const ranked = await rankWithEmbeddings(openai, supabase, prefs, candidates, limit);
-    console.log(`Ranked to ${ranked.length} events`);
+    console.log(`✅ Ranked to ${ranked.length} events`);
 
     // 4) Shape minimal response
+    console.log('🔧 Step 4: Shaping response...');
     const results = ranked.map((e) => ({
       id: e.id,
       name: e.event_name,
@@ -310,14 +343,18 @@ module.exports = async (req, res) => {
       url: e.event_url,
       tags: e.event_tags
     }));
+    console.log(`✅ Shaped ${results.length} results`);
 
     // 5) Save query to database (optional - won't fail if table doesn't exist)
+    console.log('🔧 Step 5: Saving query to database...');
     await saveQuery(supabase, message, prefs, results);
+    console.log('✅ Query saved (or skipped if table doesn\'t exist)');
 
-    console.log(`Returning ${results.length} results`);
+    console.log(`✅ Returning ${results.length} results`);
     
     // If no results found, provide helpful message
     if (results.length === 0) {
+      console.log('⚠️ No results found, returning empty response');
       return res.status(200).json({ 
         ok: true, 
         prefs, 
@@ -327,9 +364,11 @@ module.exports = async (req, res) => {
       });
     }
 
+    console.log('✅ Success! Returning results');
     return res.status(200).json({ ok: true, prefs, results, count: results.length });
   } catch (err) {
-    console.error('Error in recommend-events:', err);
+    console.error('❌ Error in recommend-events:', err);
+    console.error('❌ Error stack:', err.stack);
     return res.status(500).json({ ok: false, error: err.message });
   }
 };
