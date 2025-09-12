@@ -172,9 +172,39 @@ Return JSON with keys: is_women_specific (boolean), goals (string[]), industries
   try {
     const text = resp.choices?.[0]?.message?.content || '{}';
     const data = JSON.parse(text);
+    
+    // Map OpenAI goals to database format
+    const goalMapping = {
+      'finding co-founder': 'find-cofounder',
+      'finding cofounder': 'find-cofounder',
+      'co-founder': 'find-cofounder',
+      'cofounder': 'find-cofounder',
+      'finding investors': 'find-investors',
+      'investors': 'find-investors',
+      'funding': 'find-investors',
+      'finding angels': 'find-angels',
+      'angels': 'find-angels',
+      'finding advisors': 'find-advisors',
+      'advisors': 'find-advisors',
+      'finding users': 'find-users',
+      'users': 'find-users',
+      'finding talent': 'find-talent',
+      'talent': 'find-talent',
+      'hiring': 'find-talent',
+      'networking': 'networking',
+      'learning': 'learn-skills',
+      'skills': 'learn-skills',
+      'feedback': 'get-user-feedback',
+      'insights': 'industry-insights'
+    };
+    
+    const mappedGoals = (Array.isArray(data.goals) ? data.goals : [])
+      .map(goal => goalMapping[goal.toLowerCase()] || goal)
+      .filter(goal => goal); // Remove undefined values
+    
     return {
       is_women_specific: Boolean(data.is_women_specific),
-      goals: Array.isArray(data.goals) ? data.goals : [],
+      goals: mappedGoals,
       industries: Array.isArray(data.industries) ? data.industries : [],
       location: data.location || null,
       time_preferences: data.time_preferences || null,
