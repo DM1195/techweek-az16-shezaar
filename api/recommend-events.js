@@ -9,64 +9,63 @@ function sanitizeLikeValue(s) {
   return s.replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-const EMBEDDING_MODEL = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
-
-async function extractPreferences(message, openai) {
+async function extractUserContext(message, openai) {
   if (!openai) {
-    // Enhanced fallback: better keyword extraction for wellness tech, angels, co-founders
+    // Simple fallback extraction
     const keywords = message?.toLowerCase() || '';
-    const industries = [];
-    const goals = [];
-    
-    // Extract wellness tech related terms
-    if (keywords.includes('wellness') || keywords.includes('health') || keywords.includes('fitness') || keywords.includes('mental health')) {
-      industries.push('wellness', 'health tech', 'fitness tech');
-    }
-    
-    // Extract investor/angel related terms
-    if (keywords.includes('angel') || keywords.includes('investor') || keywords.includes('vc') || keywords.includes('funding')) {
-      goals.push('meet investors', 'find angels', 'funding', 'investment');
-    }
-    
-    // Extract co-founder related terms
-    if (keywords.includes('co-founder') || keywords.includes('cofounder') || keywords.includes('founder') || keywords.includes('partner')) {
-      goals.push('find co-founders', 'meet founders', 'partnership', 'collaboration');
-    }
-    
-    return {
-      industries,
-      goals,
+    const context = {
+      is_women_specific: keywords.includes('female') || keywords.includes('woman') || keywords.includes('women'),
+      goals: [],
+      industries: [],
       location: null,
-      day_of_week: [],
-      time_window: null,
-      budget: null,
-      keywords: message?.slice(0, 200) || ''
+      time_preferences: null,
+      budget: null
     };
+    
+    // Extract goals
+    if (keywords.includes('hire') || keywords.includes('hiring') || keywords.includes('engineers') || keywords.includes('talent')) {
+      context.goals.push('find-talent', 'hiring');
+    }
+    if (keywords.includes('investor') || keywords.includes('funding') || keywords.includes('angel')) {
+      context.goals.push('find-investors', 'find-angels');
+    }
+    if (keywords.includes('co-founder') || keywords.includes('cofounder') || keywords.includes('partner')) {
+      context.goals.push('find-cofounder');
+    }
+    if (keywords.includes('customer') || keywords.includes('user') || keywords.includes('client')) {
+      context.goals.push('find-users');
+    }
+    
+    // Extract industries
+    if (keywords.includes('fashion')) context.industries.push('fashion', 'fashion-tech');
+    if (keywords.includes('tech')) context.industries.push('tech', 'technology');
+    if (keywords.includes('ai') || keywords.includes('artificial intelligence')) context.industries.push('ai', 'artificial-intelligence');
+    if (keywords.includes('fintech')) context.industries.push('fintech');
+    if (keywords.includes('wellness') || keywords.includes('health')) context.industries.push('wellness', 'health-tech');
+    
+    return context;
   }
 
-  const system = `You are an expert at understanding user intent for SF Tech Week event recommendations. Extract structured preferences from user messages.
+  const system = `You are an expert at understanding user context for SF Tech Week event recommendations. Extract key information from user messages to help find the most relevant events.
 
 Focus on identifying:
-- Industries: wellness, health tech, fitness, AI, blockchain, fintech, startup, etc.
-- Goals: meeting investors/angels, finding co-founders, networking, learning, funding, hiring, etc.
-- Location preferences: SOMA, FiDi, Mission, South Beach, etc.
-- Time preferences: morning, afternoon, evening, specific days (Oct 6-10, 2024)
-- Budget: free, paid, low-cost
-- Event types: networking, panels, demos, pitch events, etc.
+1. Demographics: Is this person looking for women-specific events?
+2. Goals: What are they trying to achieve? (hiring, finding investors, networking, learning, etc.)
+3. Industries: What industries are they interested in? (fashion, tech, AI, fintech, wellness, etc.)
+4. Location: Any specific area preferences?
+5. Time: Any time preferences?
+6. Budget: Free vs paid events?
 
-IMPORTANT: SF Tech Week runs from October 6-10, 2024. When users mention specific dates or days, map them to the correct day of week:
-- Oct 6 = Sun, Oct 7 = Mon, Oct 8 = Tue, Oct 9 = Wed, Oct 10 = Thu
+IMPORTANT: Be broad and inclusive in your extraction. If someone mentions "female founder" they likely want women-specific events. If they mention "hiring engineers" they want talent/recruitment events.
 
-Return strict JSON with keys: industries (string[]), goals (string[]), location (string|null), day_of_week (string[] values among Mon,Tue,Wed,Thu,Fri,Sat,Sun), time_window ("morning"|"afternoon"|"evening"|null), budget ("free"|"paid"|null), keywords (string).
-
-Be intelligent about understanding context - if someone mentions "wellness tech platform" they likely want health/wellness events, if they mention "co-founders" they want networking events, if they mention "angels" they want investor events.`;
+Return JSON with keys: is_women_specific (boolean), goals (string[]), industries (string[]), location (string|null), time_preferences (string|null), budget (string|null).`;
 
   const user = `User message: ${message}`;
 
   const resp = await openai.chat.completions.create({
     model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
     response_format: { type: 'json_object' },
-    temperature: 0.2,
+    temperature: 0.1,
     messages: [
       { role: 'system', content: system },
       { role: 'user', content: user }
@@ -76,515 +75,246 @@ Be intelligent about understanding context - if someone mentions "wellness tech 
   try {
     const text = resp.choices?.[0]?.message?.content || '{}';
     const data = JSON.parse(text);
-    // Ensure defaults
     return {
-      industries: Array.isArray(data.industries) ? data.industries : [],
+      is_women_specific: Boolean(data.is_women_specific),
       goals: Array.isArray(data.goals) ? data.goals : [],
-      location: data.location ?? null,
-      day_of_week: Array.isArray(data.day_of_week) ? data.day_of_week : [],
-      time_window: data.time_window ?? null,
-      budget: data.budget ?? null,
-      keywords: typeof data.keywords === 'string' ? data.keywords : ''
+      industries: Array.isArray(data.industries) ? data.industries : [],
+      location: data.location || null,
+      time_preferences: data.time_preferences || null,
+      budget: data.budget || null
     };
   } catch {
-    return { industries: [], goals: [], location: null, day_of_week: [], time_window: null, budget: null, keywords: message || '' };
+    return { is_women_specific: false, goals: [], industries: [], location: null, time_preferences: null, budget: null };
   }
 }
 
-function buildTextFilters(prefs) {
-  const likes = [];
-  const add = (s) => {
-    const cleaned = sanitizeLikeValue(s);
-    if (cleaned) likes.push(cleaned);
-  };
-  for (const g of prefs.goals || []) add(g);
-  for (const ind of prefs.industries || []) add(ind);
-  if (prefs.location) add(prefs.location);
-  if (prefs.budget === 'free') add('free');
-  if (prefs.keywords) add(prefs.keywords);
-  return likes;
-}
-
-function mapGoalsToUsageTags(goals) {
-  const goalToUsageTag = {
-    'meet investors': ['find-investors', 'find-angels'],
-    'find angels': ['find-angels'],
-    'find co-founders': ['find-cofounder'],
-    'meet founders': ['find-cofounder'],
-    'partnership': ['find-cofounder'],
-    'collaboration': ['find-cofounder'],
-    'funding': ['find-investors', 'find-angels'],
-    'investment': ['find-investors', 'find-angels'],
-    'advisors': ['find-advisors'],
-    'mentors': ['find-advisors'],
-    'users': ['find-users'],
-    'customers': ['find-users'],
-    'beta testers': ['find-users'],
-    'feedback': ['get-user-feedback'],
-    'talent': ['find-talent'],
-    'employees': ['find-talent'],
-    'hiring': ['find-talent'],
-    'learn': ['learn-skills'],
-    'skills': ['learn-skills'],
-    'workshop': ['learn-skills'],
-    'networking': ['networking'],
-    'connect': ['networking'],
-    'industry': ['industry-insights'],
-    'trends': ['industry-insights']
-  };
-  
-  const usageTags = new Set();
-  goals.forEach(goal => {
-    const tags = goalToUsageTag[goal.toLowerCase()] || [];
-    tags.forEach(tag => usageTags.add(tag));
-  });
-  
-  return Array.from(usageTags);
-}
-
-function filterEventsByUsageTags(events, usageTags) {
-  if (!usageTags || usageTags.length === 0) {
-    return events;
-  }
-  
-  return events.filter(event => {
-    const eventUsageTags = event.usage_tags || [];
-    return usageTags.some(tag => eventUsageTags.includes(tag));
-  });
-}
-
-function filterEventsByDate(events, dayOfWeek, timeWindow) {
-  if (!dayOfWeek || dayOfWeek.length === 0) {
-    return events;
-  }
-  
-  const dayMapping = {
-    'Mon': 'Monday',
-    'Tue': 'Tuesday', 
-    'Wed': 'Wednesday',
-    'Thu': 'Thursday',
-    'Fri': 'Friday',
-    'Sat': 'Saturday',
-    'Sun': 'Sunday'
-  };
-  
-  return events.filter(event => {
-    if (!event.event_date) return true;
-    
-    // Parse date and get day of week
-    const eventDate = new Date(event.event_date);
-    const eventDay = eventDate.toLocaleDateString('en-US', { weekday: 'long' });
-    
-    // Check if event day matches any preferred days
-    const matchesDay = dayOfWeek.some(day => {
-      const fullDayName = dayMapping[day] || day;
-      return eventDay.toLowerCase().includes(fullDayName.toLowerCase());
-    });
-    
-    if (!matchesDay) return false;
-    
-    // If time window is specified, filter by time
-    if (timeWindow && event.event_time) {
-      const time = event.event_time.toLowerCase();
-      const hour = parseInt(time.match(/(\d+)/)?.[1] || '0');
-      const isPM = time.includes('pm');
-      const hour24 = isPM && hour !== 12 ? hour + 12 : (!isPM && hour === 12 ? 0 : hour);
-      
-      switch (timeWindow) {
-        case 'morning':
-          return hour24 >= 6 && hour24 < 12;
-        case 'afternoon':
-          return hour24 >= 12 && hour24 < 17;
-        case 'evening':
-          return hour24 >= 17 || hour24 < 6;
-        default:
-          return true;
-      }
-    }
-    
-    return true;
-  });
-}
-
-function filterEventsByLocation(events, location) {
-  if (!location) return events;
-  
-  const locationKeywords = location.toLowerCase().split(/[,\s]+/).filter(w => w.length > 2);
-  
-  return events.filter(event => {
-    if (!event.event_location) return true;
-    
-    const eventLocation = event.event_location.toLowerCase();
-    return locationKeywords.some(keyword => eventLocation.includes(keyword));
-  });
-}
-
-function filterEventsByBudget(events, budget) {
-  if (!budget) return events;
-  
-  return events.filter(event => {
-    if (budget === 'free') {
-      return event.price === '0' || event.price === 0 || !event.price || event.price.toLowerCase().includes('free');
-    } else if (budget === 'paid') {
-      return event.price && event.price !== '0' && event.price !== 0 && !event.price.toLowerCase().includes('free');
-    }
-    return true;
-  });
-}
-
-function filterEventsByIndustry(events, industries) {
-  if (!industries || industries.length === 0) return events;
-  
-  const industryKeywords = industries.flatMap(ind => [
-    ind.toLowerCase(),
-    ind.replace(/\s+/g, '').toLowerCase(),
-    ind.replace(/\s+/g, '-').toLowerCase()
-  ]);
-  
-  return events.filter(event => {
-    const searchText = `${event.event_name} ${event.event_description || ''} ${event.event_tags?.join(' ') || ''}`.toLowerCase();
-    return industryKeywords.some(keyword => searchText.includes(keyword));
-  });
-}
-
-async function fetchCandidateEvents(supabase, prefs, limit = 200) {
+async function filterEvents(supabase, context, limit = 100) {
   try {
-    console.log('🔧 Building base query...');
+    console.log('🔧 Building database query with context:', context);
+    
     let query = supabase
       .from(TABLE)
-      .select('id,event_name,event_date,event_time,event_location,event_description,hosted_by,price,event_url,event_tags,usage_tags,invite_only,event_name_and_link,updated_at')
+      .select('id,event_name,event_date,event_time,event_location,event_description,hosted_by,price,event_url,event_tags,usage_tags,industry_tags,women_specific,invite_only,event_name_and_link,updated_at')
       .order('updated_at', { ascending: false })
       .limit(limit);
-    console.log('✅ Base query built');
 
-    console.log('🔧 Executing database query...');
+    // Apply women-specific filter if needed
+    if (context.is_women_specific) {
+      query = query.eq('women_specific', true);
+      console.log('✅ Applied women-specific filter');
+    }
+
     const { data, error } = await query;
     
     if (error) {
       console.error('❌ Database query error:', error);
-      console.error('❌ Error details:', JSON.stringify(error, null, 2));
       throw error;
     }
     
-    console.log(`✅ Found ${data?.length || 0} candidate events`);
+    console.log(`✅ Found ${data?.length || 0} events from database`);
     
-    // Apply smart filtering based on user preferences
-    let filteredEvents = data || [];
-    const initialCount = filteredEvents.length;
-    console.log(`🔧 Starting with ${initialCount} events for smart filtering`);
-    
-    // 1. Filter by usage tags (goals) - most important filter
-    if (prefs.goals && prefs.goals.length > 0) {
-      const usageTags = mapGoalsToUsageTags(prefs.goals);
-      console.log('🔧 Mapped goals to usage tags:', usageTags);
-      
-      const beforeFilter = filteredEvents.length;
-      filteredEvents = filterEventsByUsageTags(filteredEvents, usageTags);
-      console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on usage tags`);
+    if (!data || data.length === 0) {
+      return [];
     }
-    
-    // 2. Filter by industry keywords
-    if (prefs.industries && prefs.industries.length > 0) {
+
+    // Apply broad filtering based on context
+    let filteredEvents = data;
+
+    // Filter by usage tags (goals) - most important filter
+    if (context.goals && context.goals.length > 0) {
       const beforeFilter = filteredEvents.length;
-      filteredEvents = filterEventsByIndustry(filteredEvents, prefs.industries);
-      console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on industry keywords`);
+      filteredEvents = filteredEvents.filter(event => {
+        const eventUsageTags = event.usage_tags || [];
+        return context.goals.some(goal => eventUsageTags.includes(goal));
+      });
+      console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on goals`);
     }
-    
-    // 3. Filter by date/time preferences
-    if (prefs.day_of_week && prefs.day_of_week.length > 0) {
+
+    // Filter by industry tags - broad matching
+    if (context.industries && context.industries.length > 0) {
       const beforeFilter = filteredEvents.length;
-      filteredEvents = filterEventsByDate(filteredEvents, prefs.day_of_week, prefs.time_window);
-      console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on date/time preferences`);
+      filteredEvents = filteredEvents.filter(event => {
+        const eventIndustryTags = event.industry_tags || [];
+        return context.industries.some(industry => 
+          eventIndustryTags.some(tag => 
+            tag.toLowerCase().includes(industry.toLowerCase()) || 
+            industry.toLowerCase().includes(tag.toLowerCase())
+          )
+        );
+      });
+      console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on industries`);
     }
-    
-    // 4. Filter by location
-    if (prefs.location) {
+
+    // Filter by location if specified
+    if (context.location) {
       const beforeFilter = filteredEvents.length;
-      filteredEvents = filterEventsByLocation(filteredEvents, prefs.location);
+      const locationKeywords = context.location.toLowerCase().split(/[,\s]+/).filter(w => w.length > 2);
+      filteredEvents = filteredEvents.filter(event => {
+        if (!event.event_location) return true;
+        const eventLocation = event.event_location.toLowerCase();
+        return locationKeywords.some(keyword => eventLocation.includes(keyword));
+      });
       console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on location`);
     }
-    
-    // 5. Filter by budget
-    if (prefs.budget) {
+
+    // Filter by budget if specified
+    if (context.budget) {
       const beforeFilter = filteredEvents.length;
-      filteredEvents = filterEventsByBudget(filteredEvents, prefs.budget);
+      filteredEvents = filteredEvents.filter(event => {
+        if (context.budget === 'free') {
+          return event.price === '0' || event.price === 0 || !event.price || event.price.toLowerCase().includes('free');
+        } else if (context.budget === 'paid') {
+          return event.price && event.price !== '0' && event.price !== 0 && !event.price.toLowerCase().includes('free');
+        }
+        return true;
+      });
       console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on budget`);
     }
-    
-    console.log(`🎯 Smart filtering complete: ${initialCount} → ${filteredEvents.length} events (${Math.round((1 - filteredEvents.length/initialCount) * 100)}% reduction)`);
-    
-    // If filtering is too aggressive (less than 5 events), fall back to less strict filtering
-    if (filteredEvents.length < 5 && initialCount > 10) {
-      console.log('⚠️ Too few events after filtering, applying fallback strategy...');
-      
-      // Fallback: only apply usage tag filtering (most important) and industry filtering
-      let fallbackEvents = data || [];
-      
-      if (prefs.goals && prefs.goals.length > 0) {
-        const usageTags = mapGoalsToUsageTags(prefs.goals);
-        fallbackEvents = filterEventsByUsageTags(fallbackEvents, usageTags);
-        console.log(`🔄 Fallback: ${fallbackEvents.length} events after usage tag filtering`);
-      }
-      
-      if (prefs.industries && prefs.industries.length > 0) {
-        fallbackEvents = filterEventsByIndustry(fallbackEvents, prefs.industries);
-        console.log(`🔄 Fallback: ${fallbackEvents.length} events after industry filtering`);
-      }
-      
-      // If still too few, just use usage tag filtering
-      if (fallbackEvents.length < 5 && prefs.goals && prefs.goals.length > 0) {
-        const usageTags = mapGoalsToUsageTags(prefs.goals);
-        fallbackEvents = filterEventsByUsageTags(data || [], usageTags);
-        console.log(`🔄 Final fallback: ${fallbackEvents.length} events with usage tags only`);
-      }
-      
-      // If still too few, return original data
-      if (fallbackEvents.length < 3) {
-        console.log('🔄 Using original unfiltered data as last resort');
-        return data || [];
-      }
-      
-      return fallbackEvents;
-    }
-    
+
+    console.log(`🎯 Final filtered events: ${filteredEvents.length}`);
     return filteredEvents;
+
   } catch (err) {
-    console.error('❌ Error in fetchCandidateEvents:', err);
-    console.error('❌ Error stack:', err.stack);
+    console.error('❌ Error in filterEvents:', err);
     throw err;
   }
 }
 
-async function ensureEmbeddingsForEvents(openai, supabase, events) {
-  console.log('🔧 ensureEmbeddingsForEvents called');
-  console.log('🔧 OpenAI available:', !!openai);
-  console.log('🔧 Events count:', events?.length || 0);
-  
-  if (!openai || !events?.length) {
-    console.log('⚠️ No OpenAI or events, skipping embeddings');
-    return [];
-  }
-  
-  const missing = events.filter((e) => e.embedding == null);
-  console.log('🔧 Events missing embeddings:', missing.length);
-  
-  if (!missing.length) {
-    console.log('✅ All events already have embeddings');
-    return [];
-  }
-
-  try {
-    // Prepare inputs
-    const inputs = missing.map((e) => `${e.event_name}\n${e.event_description || ''}`.slice(0, 8000));
-    console.log('🔧 Prepared', inputs.length, 'inputs for embedding');
-
-    // Batch in chunks to respect token/rate limits
-    const batchSize = 50;
-    for (let i = 0; i < inputs.length; i += batchSize) {
-      const slice = inputs.slice(i, i + batchSize);
-      console.log(`🔧 Processing batch ${i / batchSize + 1}/${Math.ceil(inputs.length / batchSize)}`);
-      
-      const resp = await openai.embeddings.create({ model: EMBEDDING_MODEL, input: slice });
-      const vectors = resp.data.map((d) => d.embedding);
-      const updates = missing.slice(i, i + batchSize).map((e, idx) => ({ id: e.id, embedding: vectors[idx] }));
-      
-      console.log('🔧 Attempting to upsert embeddings...');
-      const { error } = await supabase.from(TABLE).upsert(updates).select('id');
-      
-      if (error) {
-        console.error('❌ Error upserting embeddings:', error);
-        console.error('❌ Error details:', JSON.stringify(error, null, 2));
-        
-        // If the column doesn't exist or there's a JSON operator error, give up silently
-        if (!/column .*embedding.* does not exist/i.test(error.message) && 
-            !/operator does not exist.*json/i.test(error.message)) {
-          throw error;
-        }
-        console.log('⚠️ Embedding column issue, skipping embedding storage');
-        return [];
-      }
-      console.log('✅ Batch upserted successfully');
-    }
-    
-    console.log('✅ All embeddings processed successfully');
-    return missing.map((e) => e.id);
-  } catch (err) {
-    console.error('❌ Error in ensureEmbeddingsForEvents:', err);
-    console.log('⚠️ Continuing without embeddings');
-    return [];
-  }
-}
-
-function cosineSimilarity(a, b) {
-  let dot = 0, na = 0, nb = 0;
-  const n = Math.min(a.length, b.length);
-  for (let i = 0; i < n; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
-  return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-8);
-}
-
-async function intelligentRanking(openai, prefs, candidates, topK = 10) {
-  console.log('🔧 Starting hybrid ranking approach...');
-  console.log('🔧 Candidates count:', candidates?.length || 0);
-  console.log('🔧 OpenAI available:', !!openai);
-  
-  if (!openai || !candidates?.length) {
-    console.log('⚠️ No OpenAI or candidates, returning first', topK, 'candidates');
+async function refineEventsWithAI(openai, userMessage, context, events, limit = 10) {
+  if (!openai || !events || events.length === 0) {
+    console.log('⚠️ No OpenAI or events, returning first few events');
     return {
-      events: candidates.slice(0, topK),
-      reasoning: null
+      events: events.slice(0, limit),
+      explanations: []
     };
   }
 
   try {
-    const userQuery = prefs.keywords || '';
-    const userGoals = prefs.goals || [];
-    const userIndustries = prefs.industries || [];
+    console.log('🔧 Refining events with AI...');
     
-    // Step 1: Events are already pre-filtered by smart filtering, so we can work with them directly
-    console.log('🔧 Step 1: Events already pre-filtered by smart filtering, using all candidates');
-    const relevantEvents = candidates;
-    
-    console.log(`🔧 Working with ${relevantEvents.length} pre-filtered events`);
-    
-    // Step 2: Use AI to rank the pre-filtered events
-    if (relevantEvents.length === 0) {
-      console.log('⚠️ No relevant events found, returning first few candidates');
-      return {
-        events: candidates.slice(0, topK),
-        reasoning: {
-          overall: "No events matched the search criteria, showing general events",
-          events: []
-        }
-      };
-    }
-    
-    // Take only the most promising events for AI analysis (reduced from 15 to 10 for efficiency)
-    const eventsToAnalyze = relevantEvents.slice(0, 10);
-    
-    const eventSummaries = eventsToAnalyze.map((event, index) => {
+    // Prepare event summaries for AI analysis
+    const eventSummaries = events.slice(0, 20).map((event, index) => {
       return `${index + 1}. ${event.event_name}
    Date: ${event.event_date || 'TBA'}
    Time: ${event.event_time || 'TBA'}
    Location: ${event.event_location || 'TBA'}
    Host: ${event.hosted_by || 'TBA'}
    Price: ${event.price || 'TBA'}
-   Description: ${event.event_description ? event.event_description.substring(0, 200) + '...' : 'No description'}
-   Tags: ${event.event_tags ? event.event_tags.join(', ') : 'None'}`;
+   Description: ${event.event_description ? event.event_description.substring(0, 300) + '...' : 'No description'}
+   Tags: ${event.event_tags ? event.event_tags.join(', ') : 'None'}
+   Usage Tags: ${event.usage_tags ? event.usage_tags.join(', ') : 'None'}
+   Industry Tags: ${event.industry_tags ? event.industry_tags.join(', ') : 'None'}
+   Women Specific: ${event.women_specific ? 'Yes' : 'No'}`;
     }).join('\n\n');
 
-    const systemPrompt = `You are an expert event recommendation assistant. These events have already been pre-filtered based on the user's specific criteria (goals, industries, dates, location, budget). Your job is to rank and select the BEST matches from this curated list.
+    const systemPrompt = `You are an expert event recommendation assistant for SF Tech Week. Your job is to select the BEST events for the user and explain why each event is a good match.
 
-User Query: "${userQuery}"
-User Goals: ${userGoals.join(', ')}
-User Industries: ${userIndustries.join(', ')}
+User Query: "${userMessage}"
+User Context: ${JSON.stringify(context, null, 2)}
 
-Pre-filtered Events to analyze:
+Available Events:
 ${eventSummaries}
 
-Since these events are already filtered for relevance, focus on:
-1. Event quality and networking potential
-2. Specific match to user's stated goals
-3. Event timing and logistics
-4. Overall value and exclusivity
+Instructions:
+1. Select the top ${limit} most relevant events for this user
+2. For each selected event, provide a clear, concise explanation of why it's a good match
+3. Consider the user's goals, industries, and any specific requirements
+4. Prioritize events that directly address the user's stated needs
+5. If the user is looking for women-specific events, prioritize those
+6. Consider event quality, networking potential, and relevance
 
-Return JSON with your top recommendations:
+Return JSON in this format:
 {
-  "reasoning": "Brief explanation of your selection approach",
   "selected_events": [
     {
-      "index": 3,
-      "reason": "Why this event is the best match for the user"
+      "index": 1,
+      "explanation": "Why this event is perfect for the user"
     }
-  ]
+  ],
+  "overall_reasoning": "Brief summary of your selection strategy"
 }`;
 
-    console.log('🔧 Sending to OpenAI for focused analysis...');
     const response = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Find the best events for: "${userQuery}"` }
+        { role: 'user', content: `Please select the best events for: "${userMessage}"` }
       ],
       temperature: 0.1,
-      max_tokens: 600
+      max_tokens: 1000
     });
 
     const responseText = response.choices?.[0]?.message?.content || '';
-    console.log('🔧 OpenAI response:', responseText);
+    console.log('🔧 AI Response:', responseText);
 
-    // Parse response
-    let aiReasoning = null;
+    // Parse AI response
     let selectedEvents = [];
+    let overallReasoning = '';
     
     try {
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        aiReasoning = parsed.reasoning;
         selectedEvents = parsed.selected_events || [];
+        overallReasoning = parsed.overall_reasoning || '';
         
-        console.log('🧠 AI Reasoning:', aiReasoning);
-        console.log('🎯 Selected Events with Reasons:');
-        selectedEvents.forEach((event, idx) => {
-          console.log(`  ${idx + 1}. Event ${event.index}: ${event.reason}`);
+        console.log('🧠 AI Overall Reasoning:', overallReasoning);
+        console.log('🎯 Selected Events with Explanations:');
+        selectedEvents.forEach((selection, idx) => {
+          console.log(`  ${idx + 1}. Event ${selection.index}: ${selection.explanation}`);
         });
       } else {
-        // Fallback: return first few events
-        selectedEvents = eventsToAnalyze.slice(0, topK).map((_, idx) => ({ 
+        // Fallback: return first few events with generic explanations
+        selectedEvents = events.slice(0, limit).map((_, idx) => ({ 
           index: idx + 1, 
-          reason: 'Selected based on keyword matching' 
+          explanation: 'Selected based on relevance to your query' 
         }));
       }
     } catch (parseError) {
-      console.error('❌ Error parsing OpenAI response:', parseError);
-      selectedEvents = eventsToAnalyze.slice(0, topK).map((_, idx) => ({ 
+      console.error('❌ Error parsing AI response:', parseError);
+      selectedEvents = events.slice(0, limit).map((_, idx) => ({ 
         index: idx + 1, 
-        reason: 'Selected based on keyword matching' 
+        explanation: 'Selected based on relevance to your query' 
       }));
     }
 
-    // Map to actual events
-    const rankedEvents = selectedEvents
+    // Map to actual events with explanations
+    const refinedEvents = selectedEvents
       .map(selection => {
         const idx = selection.index - 1;
-        if (idx >= 0 && idx < eventsToAnalyze.length) {
+        if (idx >= 0 && idx < events.length) {
           return {
-            ...eventsToAnalyze[idx],
-            aiReason: selection.reason || 'No reason provided'
+            ...events[idx],
+            aiExplanation: selection.explanation || 'No explanation provided'
           };
         }
         return null;
       })
       .filter(Boolean);
 
-    console.log(`✅ Hybrid ranking complete, returning ${rankedEvents.length} results`);
+    console.log(`✅ AI refinement complete, returning ${refinedEvents.length} results`);
     return {
-      events: rankedEvents.slice(0, topK),
-      reasoning: {
-        overall: aiReasoning || "Used keyword pre-filtering + AI ranking",
-        events: selectedEvents.map(selection => ({
-          name: eventsToAnalyze[selection.index - 1]?.event_name || 'Unknown',
-          reason: selection.reason || 'No reason provided'
-        }))
-      }
+      events: refinedEvents,
+      explanations: selectedEvents.map(s => s.explanation),
+      overallReasoning
     };
 
   } catch (error) {
-    console.error('❌ Error in hybrid ranking:', error);
-    console.log('⚠️ Returning first', topK, 'candidates without ranking');
+    console.error('❌ Error in AI refinement:', error);
+    console.log('⚠️ Returning first few events without AI refinement');
     return {
-      events: candidates.slice(0, topK),
-      reasoning: null
+      events: events.slice(0, limit),
+      explanations: events.slice(0, limit).map(() => 'Selected based on relevance to your query')
     };
   }
 }
 
-async function saveQuery(supabase, message, prefs, results) {
+async function saveQuery(supabase, message, context, results) {
   try {
     console.log('🔧 Preparing query data for saving...');
     const queryData = {
       user_message: message,
-      extracted_preferences: prefs,
+      extracted_context: context,
       results_count: results.length,
       created_at: new Date().toISOString()
     };
@@ -632,6 +362,7 @@ module.exports = async (req, res) => {
     console.log('✅ Processing query:', message);
     console.log('✅ Limit:', limit);
 
+    // Initialize clients
     console.log('🔧 Initializing Supabase client...');
     const supabase = getSupabaseClient();
     console.log('✅ Supabase client initialized');
@@ -640,40 +371,27 @@ module.exports = async (req, res) => {
     const openai = getOpenAI();
     console.log('✅ OpenAI client initialized:', openai ? 'Available' : 'Not available');
 
-    // 1) Extract structured preferences using OpenAI
-    console.log('🔧 Step 1: Extracting preferences...');
-    const prefs = await extractPreferences(message, openai);
-    console.log('✅ Extracted preferences:', JSON.stringify(prefs, null, 2));
+    // Step 1: Extract user context using OpenAI
+    console.log('🔧 Step 1: Extracting user context...');
+    const context = await extractUserContext(message, openai);
+    console.log('✅ Extracted context:', JSON.stringify(context, null, 2));
 
-    // 2) Pull text-matched candidates from DB
-    console.log('🔧 Step 2: Fetching candidate events...');
-    const candidates = await fetchCandidateEvents(supabase, prefs, Math.max(50, limit * 10));
-    console.log(`✅ Found ${candidates.length} candidate events`);
+    // Step 2: Filter events based on context
+    console.log('🔧 Step 2: Filtering events based on context...');
+    const filteredEvents = await filterEvents(supabase, context, Math.max(50, limit * 5));
+    console.log(`✅ Found ${filteredEvents.length} filtered events`);
 
-    // 3) Use intelligent ranking with OpenAI
-    console.log('🔧 Step 3: Intelligent ranking with OpenAI...');
-    let ranked;
-    let aiReasoning = null;
-    try {
-      const rankingResult = await intelligentRanking(openai, prefs, candidates, limit);
-      ranked = rankingResult.events;
-      aiReasoning = rankingResult.reasoning;
-      console.log(`✅ Intelligently ranked to ${ranked.length} events`);
-      if (aiReasoning) {
-        console.log('🧠 AI Reasoning captured:', aiReasoning.overall);
-      }
-    } catch (rankError) {
-      console.error('❌ Error in intelligent ranking, using simple fallback:', rankError);
-      console.log('⚠️ Using simple fallback ranking');
-      // Simple fallback: just return the first N candidates
-      ranked = candidates.slice(0, limit);
-      aiReasoning = null;
-      console.log(`✅ Fallback: returning first ${ranked.length} events`);
-    }
+    // Step 3: Use AI to refine and explain results
+    console.log('🔧 Step 3: Refining events with AI...');
+    const refinementResult = await refineEventsWithAI(openai, message, context, filteredEvents, limit);
+    const finalEvents = refinementResult.events;
+    const explanations = refinementResult.explanations;
+    const overallReasoning = refinementResult.overallReasoning;
+    console.log(`✅ AI refined to ${finalEvents.length} final events`);
 
-    // 4) Shape minimal response
+    // Step 4: Shape response
     console.log('🔧 Step 4: Shaping response...');
-    const results = ranked.map((e) => ({
+    const results = finalEvents.map((e) => ({
       id: e.id,
       name: e.event_name,
       description: e.event_description,
@@ -684,14 +402,15 @@ module.exports = async (req, res) => {
       price: e.price,
       url: e.event_url,
       tags: e.event_tags,
+      women_specific: e.women_specific,
       invite_only: e.invite_only,
-      aiReason: e.aiReason || null
+      aiExplanation: e.aiExplanation || 'Selected based on relevance to your query'
     }));
     console.log(`✅ Shaped ${results.length} results`);
 
-    // 5) Save query to database (optional - won't fail if table doesn't exist)
+    // Step 5: Save query to database (optional)
     console.log('🔧 Step 5: Saving query to database...');
-    await saveQuery(supabase, message, prefs, results);
+    await saveQuery(supabase, message, context, results);
     console.log('✅ Query saved (or skipped if table doesn\'t exist)');
 
     console.log(`✅ Returning ${results.length} results`);
@@ -701,10 +420,10 @@ module.exports = async (req, res) => {
       console.log('⚠️ No results found, returning empty response');
       return res.status(200).json({ 
         ok: true, 
-        prefs, 
+        context, 
         results: [], 
         count: 0,
-        aiReasoning: aiReasoning,
+        overallReasoning: overallReasoning || 'No events found matching your criteria',
         message: 'No events found matching your criteria. Try broadening your search terms or check back later for new events.'
       });
     }
@@ -712,10 +431,11 @@ module.exports = async (req, res) => {
     console.log('✅ Success! Returning results');
     return res.status(200).json({ 
       ok: true, 
-      prefs, 
+      context, 
       results, 
       count: results.length,
-      aiReasoning: aiReasoning
+      overallReasoning: overallReasoning || 'Events selected based on your query and context',
+      explanations: explanations
     });
   } catch (err) {
     console.error('❌ Error in recommend-events:', err);
