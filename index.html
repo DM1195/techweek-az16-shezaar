@@ -304,6 +304,123 @@
         margin-top: 16px;
       }
       
+      .filters-container {
+        background: rgba(76, 88, 62, 0.2);
+        border: 1px solid rgba(218, 222, 216, 0.2);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 24px;
+      }
+      
+      .filters-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      
+      .filters-header h3 {
+        margin: 0;
+        font-size: 18px;
+        color: #daded8;
+      }
+      
+      .clear-filters-btn {
+        background: transparent;
+        color: rgba(218, 222, 216, 0.8);
+        border: 1px solid rgba(218, 222, 216, 0.3);
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      
+      .clear-filters-btn:hover {
+        background: rgba(218, 222, 216, 0.1);
+        color: #daded8;
+      }
+      
+      .filters-row {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+      
+      .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 150px;
+      }
+      
+      .filter-group label {
+        font-size: 14px;
+        color: rgba(218, 222, 216, 0.9);
+        font-weight: 500;
+      }
+      
+      .filter-select {
+        background: rgba(44, 52, 36, 0.6);
+        border: 1px solid rgba(218, 222, 216, 0.3);
+        color: #daded8;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      
+      .filter-select:focus {
+        outline: none;
+        border-color: #daded8;
+        background: rgba(44, 52, 36, 0.8);
+      }
+      
+      .results-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(218, 222, 216, 0.2);
+      }
+      
+      .results-header h3 {
+        margin: 0;
+        font-size: 20px;
+        color: #daded8;
+      }
+      
+      .sort-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .sort-container label {
+        font-size: 14px;
+        color: rgba(218, 222, 216, 0.9);
+        font-weight: 500;
+      }
+      
+      .sort-select {
+        background: rgba(44, 52, 36, 0.6);
+        border: 1px solid rgba(218, 222, 216, 0.3);
+        color: #daded8;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      
+      .sort-select:focus {
+        outline: none;
+        border-color: #daded8;
+        background: rgba(44, 52, 36, 0.8);
+      }
+      
       @media (max-width: 768px) {
         .wrap { padding: 20px 16px; }
         .card { padding: 24px; }
@@ -313,6 +430,26 @@
         .logo-img { height: 32px; }
         .logo-text { font-size: 20px; }
         .footer { margin-top: 40px; }
+        
+        .filters-row {
+          flex-direction: column;
+          gap: 16px;
+        }
+        
+        .filter-group {
+          min-width: auto;
+        }
+        
+        .results-header {
+          flex-direction: column;
+          gap: 12px;
+          align-items: flex-start;
+        }
+        
+        .sort-container {
+          width: 100%;
+          justify-content: space-between;
+        }
       }
     </style>
   </head>
@@ -336,7 +473,53 @@
       </div>
 
       <div id="out" class="card results" hidden>
-        <div class="prefs-display" id="prefs"></div>
+        <div class="filters-container" id="filters" hidden>
+          <div class="filters-header">
+            <h3>Filters</h3>
+            <button id="clear-filters" class="clear-filters-btn">Clear All</button>
+          </div>
+          <div class="filters-row">
+            <div class="filter-group">
+              <label>Day</label>
+              <select id="day-filter" class="filter-select">
+                <option value="">All Days</option>
+                <option value="Monday">Monday</option>
+                <option value="Tuesday">Tuesday</option>
+                <option value="Wednesday">Wednesday</option>
+                <option value="Thursday">Thursday</option>
+                <option value="Friday">Friday</option>
+                <option value="Saturday">Saturday</option>
+                <option value="Sunday">Sunday</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Location</label>
+              <select id="location-filter" class="filter-select">
+                <option value="">All Locations</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Topic</label>
+              <select id="topic-filter" class="filter-select">
+                <option value="">All Topics</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div class="results-header">
+          <h3 id="results-title">Recommended Events</h3>
+          <div class="sort-container">
+            <label for="sort-select">Sort by:</label>
+            <select id="sort-select" class="sort-select">
+              <option value="relevance">Relevance</option>
+              <option value="date">Date</option>
+              <option value="time">Time</option>
+              <option value="name">Name</option>
+            </select>
+          </div>
+        </div>
+        
         <div id="events"></div>
       </div>
       
@@ -351,40 +534,39 @@
       const input = $('input');
       const status = $('status');
       const out = $('out');
-      const prefsEl = $('prefs');
+      const filtersEl = $('filters');
       const eventsEl = $('events');
+      const dayFilter = $('day-filter');
+      const locationFilter = $('location-filter');
+      const topicFilter = $('topic-filter');
+      const sortSelect = $('sort-select');
+      const clearFiltersBtn = $('clear-filters');
+      
+      let allEvents = [];
+      let filteredEvents = [];
 
       async function recommend() {
         const message = input.value.trim();
         if (!message) return;
         btn.disabled = true; status.innerHTML = '<div class="loading"></div> Finding the best events for you...';
-        out.hidden = true; eventsEl.innerHTML = ''; prefsEl.textContent = '';
+        out.hidden = true; eventsEl.innerHTML = ''; filtersEl.hidden = true;
         try {
           const resp = await fetch('/api/recommend-events', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, limit: 10 })
+            body: JSON.stringify({ message, limit: 50 })
           });
           const data = await resp.json();
           if (!data.ok) throw new Error(data.error || 'Failed');
           
-          prefsEl.textContent = 'Parsed preferences: ' + JSON.stringify(data.prefs);
+          allEvents = data.results || [];
+          filteredEvents = [...allEvents];
           
-          if (data.results && data.results.length > 0) {
-          eventsEl.innerHTML = data.results.map(r => `
-            <div class="event">
-                <div class="event-title">${r.name}</div>
-                ${r.description ? `<div class="event-description">${r.description.length > 200 ? r.description.substring(0, 200) + '...' : r.description}</div>` : ''}
-                <div class="event-meta">
-                  <span>📅 ${r.date || 'TBA'}</span>
-                  <span>🕐 ${r.time || 'TBA'}</span>
-                  <span>📍 ${r.location || 'TBA'}</span>
-                  <span>💰 ${r.price || 'TBA'}</span>
-                </div>
-                <div class="event-host">👤 Host: ${r.host || 'TBA'}</div>
-                ${r.tags ? `<div class="event-tags">${r.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div>` : ''}
-                <div><a href="${r.url}" target="_blank" rel="noopener" class="event-link">View details →</a></div>
-            </div>
-          `).join('');
+          if (allEvents.length > 0) {
+            // Populate filter options
+            populateFilters(allEvents);
+            // Show filters and results
+            filtersEl.hidden = false;
+            renderEvents();
           } else {
             eventsEl.innerHTML = `
               <div class="event">
@@ -407,9 +589,111 @@
           }
         }
       }
+      
+      function populateFilters(events) {
+        // Populate location filter
+        const locations = [...new Set(events.map(e => e.location).filter(Boolean))].sort();
+        locationFilter.innerHTML = '<option value="">All Locations</option>' + 
+          locations.map(loc => `<option value="${loc}">${loc}</option>`).join('');
+        
+        // Populate topic filter from tags
+        const topics = [...new Set(events.flatMap(e => e.tags || []).filter(Boolean))].sort();
+        topicFilter.innerHTML = '<option value="">All Topics</option>' + 
+          topics.map(topic => `<option value="${topic}">${topic}</option>`).join('');
+      }
+      
+      function applyFilters() {
+        const dayFilterValue = dayFilter.value;
+        const locationFilterValue = locationFilter.value;
+        const topicFilterValue = topicFilter.value;
+        
+        filteredEvents = allEvents.filter(event => {
+          const dayMatch = !dayFilterValue || event.date?.includes(dayFilterValue) || 
+                          getDayFromDate(event.date) === dayFilterValue;
+          const locationMatch = !locationFilterValue || event.location === locationFilterValue;
+          const topicMatch = !topicFilterValue || (event.tags && event.tags.includes(topicFilterValue));
+          
+          return dayMatch && locationMatch && topicMatch;
+        });
+        
+        renderEvents();
+      }
+      
+      function getDayFromDate(dateStr) {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return '';
+        return date.toLocaleDateString('en-US', { weekday: 'long' });
+      }
+      
+      function sortEvents() {
+        const sortBy = sortSelect.value;
+        
+        filteredEvents.sort((a, b) => {
+          switch (sortBy) {
+            case 'date':
+              return new Date(a.date || 0) - new Date(b.date || 0);
+            case 'time':
+              return (a.time || '').localeCompare(b.time || '');
+            case 'name':
+              return (a.name || '').localeCompare(b.name || '');
+            case 'relevance':
+            default:
+              return 0; // Keep original order for relevance
+          }
+        });
+        
+        renderEvents();
+      }
+      
+      function renderEvents() {
+        if (filteredEvents.length === 0) {
+          eventsEl.innerHTML = `
+            <div class="event">
+              <div class="event-title">No Events Match Your Filters</div>
+              <div class="event-meta">
+                <span>Try adjusting your filters or clearing them to see more events.</span>
+              </div>
+            </div>
+          `;
+          return;
+        }
+        
+        eventsEl.innerHTML = filteredEvents.map(r => `
+          <div class="event">
+              <div class="event-title">${r.name}</div>
+              ${r.description ? `<div class="event-description">${r.description.length > 200 ? r.description.substring(0, 200) + '...' : r.description}</div>` : ''}
+              <div class="event-meta">
+                <span>📅 ${r.date || 'TBA'}</span>
+                <span>🕐 ${r.time || 'TBA'}</span>
+                <span>📍 ${r.location || 'TBA'}</span>
+                <span>💰 ${r.price || 'TBA'}</span>
+              </div>
+              <div class="event-host">👤 Host: ${r.host || 'TBA'}</div>
+              ${r.tags ? `<div class="event-tags">${r.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div>` : ''}
+              <div><a href="${r.url}" target="_blank" rel="noopener" class="event-link">View details →</a></div>
+          </div>
+        `).join('');
+      }
+      
+      function clearFilters() {
+        dayFilter.value = '';
+        locationFilter.value = '';
+        topicFilter.value = '';
+        sortSelect.value = 'relevance';
+        filteredEvents = [...allEvents];
+        renderEvents();
+      }
 
       btn.addEventListener('click', recommend);
       input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) recommend(); });
+      
+      // Filter and sort event listeners
+      dayFilter.addEventListener('change', applyFilters);
+      locationFilter.addEventListener('change', applyFilters);
+      topicFilter.addEventListener('change', applyFilters);
+      sortSelect.addEventListener('change', sortEvents);
+      clearFiltersBtn.addEventListener('click', clearFilters);
     </script>
   </body>
   </html>
