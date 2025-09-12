@@ -107,8 +107,8 @@ async function fetchCandidateEvents(supabase, prefs, limit = 200) {
     console.log('🔧 Building base query...');
     let query = supabase
       .from(TABLE)
-      .select('id,event_name,event_date,event_time,event_location,event_description,hosted_by,price,event_url,event_tags,created_at')
-      .order('created_at', { ascending: false })
+      .select('id,event_name,event_date,event_time,event_location,event_description,hosted_by,price,event_url,event_tags,invite_only,event_name_and_link,updated_at')
+      .order('updated_at', { ascending: false })
       .limit(limit);
     console.log('✅ Base query built');
 
@@ -166,8 +166,8 @@ async function fetchCandidateEvents(supabase, prefs, limit = 200) {
       try {
         const fallbackQuery = supabase
           .from(TABLE)
-          .select('id,event_name,event_date,event_time,event_location,event_description,hosted_by,price,event_url,event_tags,created_at')
-          .order('created_at', { ascending: false })
+          .select('id,event_name,event_date,event_time,event_location,event_description,hosted_by,price,event_url,event_tags,invite_only,event_name_and_link,updated_at')
+          .order('updated_at', { ascending: false })
           .limit(limit);
         
         const { data: fallbackData, error: fallbackError } = await fallbackQuery;
@@ -284,7 +284,7 @@ async function rankWithEmbeddings(openai, supabase, prefs, candidates, topK = 10
     return candidates.slice(0, topK);
   }
   
-  const { data, error } = await supabase.from(TABLE).select('id,event_name,event_description,event_date,event_time,event_location,hosted_by,price,event_url,embedding').in('id', ids);
+  const { data, error } = await supabase.from(TABLE).select('id,event_name,event_description,event_date,event_time,event_location,hosted_by,price,event_url,event_tags,invite_only,event_name_and_link,updated_at,embedding').in('id', ids);
   if (error) {
     console.error('❌ Error fetching candidates with embeddings:', error);
     return candidates.slice(0, topK);
@@ -416,7 +416,8 @@ module.exports = async (req, res) => {
       host: e.hosted_by,
       price: e.price,
       url: e.event_url,
-      tags: e.event_tags
+      tags: e.event_tags,
+      invite_only: e.invite_only
     }));
     console.log(`✅ Shaped ${results.length} results`);
 
