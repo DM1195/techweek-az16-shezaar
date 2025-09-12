@@ -242,7 +242,22 @@ Please analyze the user's query and select the ${topK} most relevant events. Con
 5. Location preferences
 6. Time and date relevance
 
-Return ONLY a JSON array of event indices (1-based) in order of relevance, like: [3, 7, 12, 1, 8, ...]`;
+IMPORTANT: For each selected event, provide a brief explanation of why it's relevant to the user's query.
+
+Return a JSON object with this structure:
+{
+  "reasoning": "Brief explanation of your overall analysis approach",
+  "selected_events": [
+    {
+      "index": 3,
+      "reason": "Why this event is relevant to the user's query"
+    },
+    {
+      "index": 7,
+      "reason": "Why this event is relevant to the user's query"
+    }
+  ]
+}`;
 
     console.log('🔧 Sending to OpenAI for intelligent ranking...');
     const response = await openai.chat.completions.create({
@@ -258,18 +273,28 @@ Return ONLY a JSON array of event indices (1-based) in order of relevance, like:
     const responseText = response.choices?.[0]?.message?.content || '';
     console.log('🔧 OpenAI response:', responseText);
 
-    // Parse the response to get event indices
-    let selectedIndices = [];
+    // Parse the structured response
+    let aiReasoning = null;
+    let selectedEvents = [];
+    
     try {
-      // Try to extract JSON array from response
-      const jsonMatch = responseText.match(/\[[\d\s,]+\]/);
+      // Try to parse the JSON response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        selectedIndices = JSON.parse(jsonMatch[0]);
+        const parsed = JSON.parse(jsonMatch[0]);
+        aiReasoning = parsed.reasoning;
+        selectedEvents = parsed.selected_events || [];
+        
+        console.log('🧠 AI Reasoning:', aiReasoning);
+        console.log('🎯 Selected Events with Reasons:');
+        selectedEvents.forEach((event, idx) => {
+          console.log(`  ${idx + 1}. Event ${event.index}: ${event.reason}`);
+        });
       } else {
         // Fallback: look for numbers in the response
         const numbers = responseText.match(/\d+/g);
         if (numbers) {
-          selectedIndices = numbers.slice(0, topK).map(n => parseInt(n) - 1); // Convert to 0-based
+          selectedEvents = numbers.slice(0, topK).map(n => ({ index: parseInt(n) }));
         }
       }
     } catch (parseError) {
@@ -279,9 +304,17 @@ Return ONLY a JSON array of event indices (1-based) in order of relevance, like:
     }
 
     // Map indices back to actual events
-    const rankedEvents = selectedIndices
-      .filter(idx => idx >= 0 && idx < candidates.length)
-      .map(idx => candidates[idx])
+    const rankedEvents = selectedEvents
+      .map(selection => {
+        const idx = selection.index - 1; // Convert to 0-based
+        if (idx >= 0 && idx < candidates.length) {
+          return {
+            ...candidates[idx],
+            aiReason: selection.reason || 'No reason provided'
+          };
+        }
+        return null;
+      })
       .filter(Boolean);
 
     console.log(`✅ Intelligent ranking complete, returning ${rankedEvents.length} results`);
@@ -392,7 +425,8 @@ module.exports = async (req, res) => {
       price: e.price,
       url: e.event_url,
       tags: e.event_tags,
-      invite_only: e.invite_only
+      invite_only: e.invite_only,
+      aiReason: e.aiReason || null
     }));
     console.log(`✅ Shaped ${results.length} results`);
 

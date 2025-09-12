@@ -421,6 +421,36 @@
         background: rgba(44, 52, 36, 0.8);
       }
       
+      .ai-reasoning {
+        background: rgba(76, 88, 62, 0.3);
+        border: 1px solid rgba(218, 222, 216, 0.2);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 20px;
+        font-size: 14px;
+      }
+      
+      .ai-reasoning h4 {
+        margin: 0 0 12px 0;
+        color: #daded8;
+        font-size: 16px;
+      }
+      
+      .ai-reasoning .reasoning-content {
+        color: rgba(218, 222, 216, 0.9);
+        line-height: 1.5;
+      }
+      
+      .event-reason {
+        background: rgba(218, 222, 216, 0.1);
+        border-left: 3px solid rgba(218, 222, 216, 0.3);
+        padding: 8px 12px;
+        margin: 8px 0;
+        border-radius: 4px;
+        font-style: italic;
+        font-size: 13px;
+      }
+      
       @media (max-width: 768px) {
         .wrap { padding: 20px 16px; }
         .card { padding: 24px; }
@@ -520,6 +550,11 @@
           </div>
         </div>
         
+        <div id="ai-reasoning" class="ai-reasoning" hidden>
+          <h4>AI Reasoning</h4>
+          <div id="reasoning-content"></div>
+        </div>
+        
         <div id="events"></div>
       </div>
       
@@ -541,9 +576,12 @@
       const topicFilter = $('topic-filter');
       const sortSelect = $('sort-select');
       const clearFiltersBtn = $('clear-filters');
+      const aiReasoningEl = $('ai-reasoning');
+      const reasoningContentEl = $('reasoning-content');
       
       let allEvents = [];
       let filteredEvents = [];
+      let aiReasoning = null;
 
       async function recommend() {
         const message = input.value.trim();
@@ -560,6 +598,7 @@
           
           allEvents = data.results || [];
           filteredEvents = [...allEvents];
+          aiReasoning = data.aiReasoning || null;
           
           if (allEvents.length > 0) {
             // Populate filter options
@@ -567,6 +606,7 @@
             // Show filters and results
             filtersEl.hidden = false;
             renderEvents();
+            renderAIReasoning();
           } else {
             eventsEl.innerHTML = `
               <div class="event">
@@ -671,6 +711,7 @@
               </div>
               <div class="event-host">👤 Host: ${r.host || 'TBA'}</div>
               ${r.tags ? `<div class="event-tags">${r.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div>` : ''}
+              ${r.aiReason ? `<div class="event-reason"><strong>Why recommended:</strong> ${r.aiReason}</div>` : ''}
               <div><a href="${r.url}" target="_blank" rel="noopener" class="event-link">View details →</a></div>
           </div>
         `).join('');
@@ -683,6 +724,24 @@
         sortSelect.value = 'relevance';
         filteredEvents = [...allEvents];
         renderEvents();
+      }
+      
+      function renderAIReasoning() {
+        if (!aiReasoning) {
+          aiReasoningEl.hidden = true;
+          return;
+        }
+        
+        reasoningContentEl.innerHTML = `
+          <div class="reasoning-content">
+            <strong>Overall Analysis:</strong> ${aiReasoning.overall || 'No overall reasoning provided'}<br><br>
+            <strong>Event-Specific Reasoning:</strong>
+            ${aiReasoning.events ? aiReasoning.events.map(event => 
+              `<div class="event-reason"><strong>${event.name}:</strong> ${event.reason}</div>`
+            ).join('') : 'No event-specific reasoning provided'}
+          </div>
+        `;
+        aiReasoningEl.hidden = false;
       }
 
       btn.addEventListener('click', recommend);
