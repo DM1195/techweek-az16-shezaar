@@ -130,13 +130,16 @@ async function filterEvents(supabase, context, limit = 100) {
       console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on goals`);
     }
 
-    // Filter by industry tags - broad matching
+    // Filter by industry tags - broad matching (check both industry_tags and event_tags)
     if (context.industries && context.industries.length > 0) {
       const beforeFilter = filteredEvents.length;
       filteredEvents = filteredEvents.filter(event => {
         const eventIndustryTags = event.industry_tags || [];
+        const eventTags = event.event_tags || [];
+        const allTags = [...eventIndustryTags, ...eventTags];
+        
         return context.industries.some(industry => 
-          eventIndustryTags.some(tag => 
+          allTags.some(tag => 
             tag.toLowerCase().includes(industry.toLowerCase()) || 
             industry.toLowerCase().includes(tag.toLowerCase())
           )
