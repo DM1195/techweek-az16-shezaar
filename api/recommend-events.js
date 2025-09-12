@@ -107,7 +107,7 @@ async function fetchCandidateEvents(supabase, prefs, limit = 200) {
     console.log('🔧 Building base query...');
     let query = supabase
       .from(TABLE)
-      .select('*')
+      .select('id,event_name,event_date,event_time,event_location,event_description,hosted_by,price,event_url,event_tags,created_at')
       .order('created_at', { ascending: false })
       .limit(limit);
     console.log('✅ Base query built');
@@ -149,37 +149,10 @@ async function fetchCandidateEvents(supabase, prefs, limit = 200) {
     
     console.log('🔧 Search terms built:', searchTerms);
 
-    // If we have search terms, use them to filter events
-    if (searchTerms.length > 0) {
-      // Clean and deduplicate search terms, then join them
-      const cleanTerms = [...new Set(searchTerms
-        .filter(term => term && term.trim())
-        .map(term => term.trim())
-        .filter(term => term.length > 1))]; // Remove single character terms
-      
-      console.log('🔧 Clean terms:', cleanTerms);
-      
-      if (cleanTerms.length > 0) {
-        // Create a single search string like the working get-events.js approach
-        const searchString = cleanTerms.slice(0, 5).join(' '); // Join terms with spaces
-        const cleaned = sanitizeLikeValue(searchString);
-        
-        console.log('🔧 Search string:', searchString);
-        console.log('🔧 Cleaned string:', cleaned);
-        
-        if (cleaned) {
-          console.log('🔧 Applying search filter...');
-          
-          // Use the same pattern as get-events.js (event_tags removed due to JSON type)
-          query = query.or(
-            `event_name.ilike.%${cleaned}%,event_description.ilike.%${cleaned}%,event_location.ilike.%${cleaned}%,hosted_by.ilike.%${cleaned}%`
-          );
-          console.log('✅ Search filter applied');
-        }
-      }
-    } else {
-      console.log('⚠️ No search terms, using base query');
-    }
+    // For now, let's skip the search filter to avoid the JSON operator error
+    // We'll rely on the embedding ranking to find relevant events
+    console.log('⚠️ Skipping search filter to avoid JSON operator error');
+    console.log('🔧 Will rely on embedding ranking for relevance');
 
     console.log('🔧 Executing database query...');
     const { data, error } = await query;
@@ -187,7 +160,29 @@ async function fetchCandidateEvents(supabase, prefs, limit = 200) {
     if (error) {
       console.error('❌ Database query error:', error);
       console.error('❌ Error details:', JSON.stringify(error, null, 2));
-      throw error;
+      
+      // Fallback: try without search filter
+      console.log('🔄 Attempting fallback query without search filter...');
+      try {
+        const fallbackQuery = supabase
+          .from(TABLE)
+          .select('id,event_name,event_date,event_time,event_location,event_description,hosted_by,price,event_url,event_tags,created_at')
+          .order('created_at', { ascending: false })
+          .limit(limit);
+        
+        const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+        
+        if (fallbackError) {
+          console.error('❌ Fallback query also failed:', fallbackError);
+          throw error; // Throw original error
+        }
+        
+        console.log(`✅ Fallback query succeeded, found ${fallbackData?.length || 0} events`);
+        return fallbackData || [];
+      } catch (fallbackErr) {
+        console.error('❌ Fallback query failed:', fallbackErr);
+        throw error; // Throw original error
+      }
     }
     
     console.log(`✅ Found ${data?.length || 0} candidate events`);
@@ -200,30 +195,63 @@ async function fetchCandidateEvents(supabase, prefs, limit = 200) {
 }
 
 async function ensureEmbeddingsForEvents(openai, supabase, events) {
-  if (!openai || !events?.length) return [];
-  const missing = events.filter((e) => e.embedding == null);
-  if (!missing.length) return [];
-
-  // Prepare inputs
-  const inputs = missing.map((e) => `${e.event_name}\n${e.event_description || ''}`.slice(0, 8000));
-
-  // Batch in chunks to respect token/rate limits
-  const batchSize = 50;
-  for (let i = 0; i < inputs.length; i += batchSize) {
-    const slice = inputs.slice(i, i + batchSize);
-    const resp = await openai.embeddings.create({ model: EMBEDDING_MODEL, input: slice });
-    const vectors = resp.data.map((d) => d.embedding);
-    const updates = missing.slice(i, i + batchSize).map((e, idx) => ({ id: e.id, embedding: vectors[idx] }));
-    const { error } = await supabase.from(TABLE).upsert(updates).select('id');
-    if (error) {
-      // If the column doesn't exist, give up silently; caller will fall back to text ranking
-      if (!/column .*embedding.* does not exist/i.test(error.message)) {
-        throw error;
-      }
-      return [];
-    }
+  console.log('🔧 ensureEmbeddingsForEvents called');
+  console.log('🔧 OpenAI available:', !!openai);
+  console.log('🔧 Events count:', events?.length || 0);
+  
+  if (!openai || !events?.length) {
+    console.log('⚠️ No OpenAI or events, skipping embeddings');
+    return [];
   }
-  return missing.map((e) => e.id);
+  
+  const missing = events.filter((e) => e.embedding == null);
+  console.log('🔧 Events missing embeddings:', missing.length);
+  
+  if (!missing.length) {
+    console.log('✅ All events already have embeddings');
+    return [];
+  }
+
+  try {
+    // Prepare inputs
+    const inputs = missing.map((e) => `${e.event_name}\n${e.event_description || ''}`.slice(0, 8000));
+    console.log('🔧 Prepared', inputs.length, 'inputs for embedding');
+
+    // Batch in chunks to respect token/rate limits
+    const batchSize = 50;
+    for (let i = 0; i < inputs.length; i += batchSize) {
+      const slice = inputs.slice(i, i + batchSize);
+      console.log(`🔧 Processing batch ${i / batchSize + 1}/${Math.ceil(inputs.length / batchSize)}`);
+      
+      const resp = await openai.embeddings.create({ model: EMBEDDING_MODEL, input: slice });
+      const vectors = resp.data.map((d) => d.embedding);
+      const updates = missing.slice(i, i + batchSize).map((e, idx) => ({ id: e.id, embedding: vectors[idx] }));
+      
+      console.log('🔧 Attempting to upsert embeddings...');
+      const { error } = await supabase.from(TABLE).upsert(updates).select('id');
+      
+      if (error) {
+        console.error('❌ Error upserting embeddings:', error);
+        console.error('❌ Error details:', JSON.stringify(error, null, 2));
+        
+        // If the column doesn't exist or there's a JSON operator error, give up silently
+        if (!/column .*embedding.* does not exist/i.test(error.message) && 
+            !/operator does not exist.*json/i.test(error.message)) {
+          throw error;
+        }
+        console.log('⚠️ Embedding column issue, skipping embedding storage');
+        return [];
+      }
+      console.log('✅ Batch upserted successfully');
+    }
+    
+    console.log('✅ All embeddings processed successfully');
+    return missing.map((e) => e.id);
+  } catch (err) {
+    console.error('❌ Error in ensureEmbeddingsForEvents:', err);
+    console.log('⚠️ Continuing without embeddings');
+    return [];
+  }
 }
 
 function cosineSimilarity(a, b) {
@@ -234,23 +262,61 @@ function cosineSimilarity(a, b) {
 }
 
 async function rankWithEmbeddings(openai, supabase, prefs, candidates, topK = 10) {
-  if (!openai || !candidates?.length) return candidates.slice(0, topK);
+  console.log('🔧 Starting embedding ranking...');
+  console.log('🔧 Candidates count:', candidates?.length || 0);
+  console.log('🔧 OpenAI available:', !!openai);
+  
+  if (!openai || !candidates?.length) {
+    console.log('⚠️ No OpenAI or candidates, returning first', topK, 'candidates');
+    return candidates.slice(0, topK);
+  }
+  
   // Ensure embeddings exist in DB for these candidates
+  console.log('🔧 Ensuring embeddings exist...');
   await ensureEmbeddingsForEvents(openai, supabase, candidates);
+  
   // Re-fetch candidates with embeddings
   const ids = candidates.map((e) => e.id).filter(Boolean);
-  if (!ids.length) return candidates.slice(0, topK);
+  console.log('🔧 Re-fetching candidates with embeddings, IDs:', ids.length);
+  
+  if (!ids.length) {
+    console.log('⚠️ No valid IDs, returning first', topK, 'candidates');
+    return candidates.slice(0, topK);
+  }
+  
   const { data, error } = await supabase.from(TABLE).select('id,event_name,event_description,event_date,event_time,event_location,hosted_by,price,event_url,embedding').in('id', ids);
-  if (error) throw error;
+  if (error) {
+    console.error('❌ Error fetching candidates with embeddings:', error);
+    return candidates.slice(0, topK);
+  }
+  
   const haveEmb = data.filter((e) => Array.isArray(e.embedding));
-  if (!haveEmb.length) return candidates.slice(0, topK);
+  console.log('🔧 Candidates with embeddings:', haveEmb.length);
+  
+  if (!haveEmb.length) {
+    console.log('⚠️ No embeddings found, returning first', topK, 'candidates');
+    return candidates.slice(0, topK);
+  }
 
+  // Create user query text for embedding
   const userText = [prefs.keywords, ...(prefs.goals||[]), ...(prefs.industries||[])].filter(Boolean).join(' ').trim() || 'events that match my goals';
-  const userEmb = (await openai.embeddings.create({ model: EMBEDDING_MODEL, input: userText })).data[0].embedding;
+  console.log('🔧 User query text:', userText);
+  
+  try {
+    const userEmb = (await openai.embeddings.create({ model: EMBEDDING_MODEL, input: userText })).data[0].embedding;
+    console.log('🔧 User embedding created, length:', userEmb.length);
 
-  const scored = haveEmb.map((e) => ({ e, score: cosineSimilarity(userEmb, e.embedding) }));
-  scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, topK).map((x) => x.e);
+    const scored = haveEmb.map((e) => ({ e, score: cosineSimilarity(userEmb, e.embedding) }));
+    scored.sort((a, b) => b.score - a.score);
+    
+    const results = scored.slice(0, topK).map((x) => x.e);
+    console.log('✅ Embedding ranking complete, returning', results.length, 'results');
+    return results;
+  } catch (embError) {
+    console.error('❌ Error creating user embedding:', embError);
+    console.log('⚠️ Returning first', topK, 'candidates without ranking');
+    return candidates.slice(0, topK);
+  }
 }
 
 async function saveQuery(supabase, message, prefs, results) {
@@ -326,8 +392,17 @@ module.exports = async (req, res) => {
 
     // 3) Rank with embeddings when available
     console.log('🔧 Step 3: Ranking events...');
-    const ranked = await rankWithEmbeddings(openai, supabase, prefs, candidates, limit);
-    console.log(`✅ Ranked to ${ranked.length} events`);
+    let ranked;
+    try {
+      ranked = await rankWithEmbeddings(openai, supabase, prefs, candidates, limit);
+      console.log(`✅ Ranked to ${ranked.length} events`);
+    } catch (rankError) {
+      console.error('❌ Error in ranking, using simple fallback:', rankError);
+      console.log('⚠️ Using simple text-based ranking fallback');
+      // Simple fallback: just return the first N candidates
+      ranked = candidates.slice(0, limit);
+      console.log(`✅ Fallback: returning first ${ranked.length} events`);
+    }
 
     // 4) Shape minimal response
     console.log('🔧 Step 4: Shaping response...');
