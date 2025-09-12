@@ -491,6 +491,183 @@
         }
       }
       
+      /* Outfit Recommendation Modal */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(10px);
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+      }
+      
+      .modal-overlay.show {
+        opacity: 1;
+        visibility: visible;
+      }
+      
+      .modal-content {
+        background: rgba(76, 88, 62, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(218, 222, 216, 0.3);
+        border-radius: 20px;
+        padding: 32px;
+        max-width: 600px;
+        width: 100%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        transform: translateY(20px) scale(0.95);
+        transition: all 0.3s ease;
+      }
+      
+      .modal-overlay.show .modal-content {
+        transform: translateY(0) scale(1);
+      }
+      
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid rgba(218, 222, 216, 0.2);
+      }
+      
+      .modal-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: #daded8;
+        margin: 0;
+      }
+      
+      .modal-close {
+        background: transparent;
+        border: none;
+        color: rgba(218, 222, 216, 0.8);
+        font-size: 24px;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .modal-close:hover {
+        background: rgba(218, 222, 216, 0.1);
+        color: #daded8;
+      }
+      
+      .outfit-recommendation {
+        background: rgba(44, 52, 36, 0.6);
+        border: 1px solid rgba(218, 222, 216, 0.2);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+      
+      .outfit-recommendation h4 {
+        margin: 0 0 12px 0;
+        color: #daded8;
+        font-size: 18px;
+      }
+      
+      .outfit-recommendation p {
+        margin: 0 0 16px 0;
+        color: rgba(218, 222, 216, 0.9);
+        line-height: 1.6;
+      }
+      
+      .outfit-recommendation p:last-child {
+        margin-bottom: 0;
+      }
+      
+      .event-types {
+        background: rgba(218, 222, 216, 0.1);
+        border: 1px solid rgba(218, 222, 216, 0.2);
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 20px;
+      }
+      
+      .event-types h5 {
+        margin: 0 0 8px 0;
+        color: #daded8;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      
+      .event-types .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      
+      .event-types .tag {
+        background: rgba(218, 222, 216, 0.2);
+        color: rgba(218, 222, 216, 0.9);
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        border: 1px solid rgba(218, 222, 216, 0.3);
+      }
+      
+      .modal-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(218, 222, 216, 0.2);
+      }
+      
+      .modal-btn {
+        background: #daded8;
+        color: #2c3424;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(218, 222, 216, 0.3);
+      }
+      
+      .modal-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(218, 222, 216, 0.4);
+        background: rgba(218, 222, 216, 0.9);
+      }
+      
+      .modal-btn.secondary {
+        background: transparent;
+        color: rgba(218, 222, 216, 0.8);
+        border: 1px solid rgba(218, 222, 216, 0.3);
+        box-shadow: none;
+      }
+      
+      .modal-btn.secondary:hover {
+        background: rgba(218, 222, 216, 0.1);
+        color: #daded8;
+        transform: none;
+        box-shadow: none;
+      }
+
       @media (max-width: 768px) {
         .wrap { padding: 20px 16px; }
         .card { padding: 24px; }
@@ -525,6 +702,23 @@
           right: 20px;
           padding: 14px 20px;
           font-size: 14px;
+        }
+        
+        .modal-content {
+          padding: 24px;
+          margin: 10px;
+        }
+        
+        .modal-title {
+          font-size: 20px;
+        }
+        
+        .modal-actions {
+          flex-direction: column;
+        }
+        
+        .modal-btn {
+          width: 100%;
         }
       }
     </style>
@@ -609,6 +803,25 @@
         Find the Perfect Outfit
       </button>
       
+      <!-- Outfit Recommendation Modal -->
+      <div id="outfit-modal" class="modal-overlay">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 class="modal-title">Outfit Recommendation</h3>
+            <button class="modal-close" id="modal-close">&times;</button>
+          </div>
+          
+          <div id="outfit-content">
+            <!-- Outfit recommendation content will be inserted here -->
+          </div>
+          
+          <div class="modal-actions">
+            <button class="modal-btn secondary" id="modal-close-btn">Close</button>
+            <button class="modal-btn" id="get-another-outfit">Get Another Recommendation</button>
+          </div>
+        </div>
+      </div>
+      
       <footer class="footer">
         <p>Powered by the minds behind <a href="https://www.shezaar.com" target="_blank" rel="noopener" class="shezaar-link">Shezaar</a></p>
       </footer>
@@ -630,6 +843,11 @@
       const clearFiltersBtn = $('clear-filters');
       const aiReasoningEl = $('ai-reasoning');
       const reasoningContentEl = $('reasoning-content');
+      const outfitModal = $('outfit-modal');
+      const outfitContent = $('outfit-content');
+      const modalClose = $('modal-close');
+      const modalCloseBtn = $('modal-close-btn');
+      const getAnotherOutfitBtn = $('get-another-outfit');
       
       // Hide floating button initially
       outfitBtn.hidden = true;
@@ -721,10 +939,6 @@
         
         outfitBtn.disabled = true; 
         status.innerHTML = '<div class="loading"></div> Finding the perfect outfit for you...';
-        out.hidden = true; 
-        eventsEl.innerHTML = ''; 
-        filtersEl.hidden = true;
-        outfitBtn.hidden = true; // Hide floating button while processing
         
         try {
           const resp = await fetch('/api/recommend-outfit', {
@@ -735,27 +949,60 @@
           const data = await resp.json();
           if (!data.ok) throw new Error(data.error || 'Failed');
           
-          // Display outfit recommendations
-          eventsEl.innerHTML = `
-            <div class="event">
-              <div class="event-title">Outfit Recommendation</div>
-              <div class="event-description">${data.recommendation || 'No outfit recommendation available.'}</div>
-              ${data.reasoning ? `<div class="event-reason"><strong>Why this outfit:</strong> ${data.reasoning}</div>` : ''}
-            </div>
-          `;
+          // Display outfit recommendations in modal
+          showOutfitModal(data);
           
-          out.hidden = false;
-          outfitBtn.hidden = false; // Show floating button again after outfit recommendation
         } catch (e) {
           console.error('Error:', e);
           status.innerHTML = `<div class="error">Error: ${e.message}</div>`;
-          outfitBtn.hidden = false; // Show floating button even on error
         } finally {
           outfitBtn.disabled = false; 
           if (!status.innerHTML.includes('error')) {
             status.textContent = '';
           }
         }
+      }
+      
+      function showOutfitModal(data) {
+        const eventTypes = data.eventTypes || [];
+        const eventTypeLabels = {
+          'investor_meeting': 'Investor Meeting',
+          'startup_pitch': 'Startup Pitch',
+          'co_founder_meetup': 'Co-founder Meetup',
+          'networking_event': 'Networking Event',
+          'tech_meetup': 'Tech Meetup',
+          'wellness_tech': 'Wellness Tech',
+          'fintech': 'Fintech',
+          'ai_ml': 'AI/ML',
+          'sustainability': 'Sustainability',
+          'healthcare_tech': 'Healthcare Tech'
+        };
+        
+        outfitContent.innerHTML = `
+          ${eventTypes.length > 0 ? `
+            <div class="event-types">
+              <h5>Detected Event Types:</h5>
+              <div class="tags">
+                ${eventTypes.map(type => `<span class="tag">${eventTypeLabels[type] || type}</span>`).join('')}
+              </div>
+            </div>
+          ` : ''}
+          
+          <div class="outfit-recommendation">
+            <h4>Recommended Outfit</h4>
+            <p>${data.recommendation || 'No outfit recommendation available.'}</p>
+            ${data.reasoning ? `<p><strong>Why this outfit:</strong> ${data.reasoning}</p>` : ''}
+          </div>
+        `;
+        
+        // Show modal
+        outfitModal.classList.add('show');
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+      }
+      
+      function hideOutfitModal() {
+        outfitModal.classList.remove('show');
+        document.body.style.overflow = ''; // Restore scrolling
       }
       
       function populateFilters(events) {
@@ -875,6 +1122,28 @@
       btn.addEventListener('click', recommend);
       outfitBtn.addEventListener('click', recommendOutfit);
       input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) recommend(); });
+      
+      // Modal event listeners
+      modalClose.addEventListener('click', hideOutfitModal);
+      modalCloseBtn.addEventListener('click', hideOutfitModal);
+      getAnotherOutfitBtn.addEventListener('click', () => {
+        hideOutfitModal();
+        recommendOutfit();
+      });
+      
+      // Close modal when clicking outside
+      outfitModal.addEventListener('click', (e) => {
+        if (e.target === outfitModal) {
+          hideOutfitModal();
+        }
+      });
+      
+      // Close modal with Escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && outfitModal.classList.contains('show')) {
+          hideOutfitModal();
+        }
+      });
       
       // Filter and sort event listeners
       dayFilter.addEventListener('change', applyFilters);

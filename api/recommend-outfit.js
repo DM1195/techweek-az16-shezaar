@@ -1,5 +1,76 @@
 const { getSupabaseClient } = require('./_supabase');
 const { getOpenAI } = require('./_openai');
+const fs = require('fs');
+const path = require('path');
+
+// Load outfit recommendations from CSV
+function loadOutfitRecommendations() {
+  try {
+    const csvPath = path.join(process.cwd(), 'outfit-recommendations.csv');
+    const csvContent = fs.readFileSync(csvPath, 'utf8');
+    const lines = csvContent.split('\n').filter(line => line.trim());
+    const recommendations = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      // Simple CSV parsing - find the first two commas to split into 3 parts
+      const firstComma = line.indexOf(',');
+      const secondComma = line.indexOf(',', firstComma + 1);
+      
+      if (firstComma !== -1 && secondComma !== -1) {
+        recommendations.push({
+          event_type: line.substring(0, firstComma),
+          outfit_recommendation: line.substring(firstComma + 1, secondComma),
+          reasoning: line.substring(secondComma + 1)
+        });
+      }
+    }
+    
+    return recommendations;
+  } catch (error) {
+    console.error('Error loading outfit recommendations:', error);
+    return [];
+  }
+}
+
+// Analyze message to determine event types
+function analyzeEventTypes(message) {
+  const lowerMessage = message.toLowerCase();
+  const eventTypes = [];
+  
+  if (lowerMessage.includes('investor') || lowerMessage.includes('angel') || lowerMessage.includes('funding') || lowerMessage.includes('vc')) {
+    eventTypes.push('investor_meeting');
+  }
+  if (lowerMessage.includes('co-founder') || lowerMessage.includes('cofounder') || lowerMessage.includes('founder')) {
+    eventTypes.push('co_founder_meetup');
+  }
+  if (lowerMessage.includes('startup') || lowerMessage.includes('pitch') || lowerMessage.includes('pitching')) {
+    eventTypes.push('startup_pitch');
+  }
+  if (lowerMessage.includes('networking') || lowerMessage.includes('network')) {
+    eventTypes.push('networking_event');
+  }
+  if (lowerMessage.includes('tech') || lowerMessage.includes('technology')) {
+    eventTypes.push('tech_meetup');
+  }
+  if (lowerMessage.includes('wellness') || lowerMessage.includes('health') || lowerMessage.includes('fitness')) {
+    eventTypes.push('wellness_tech');
+  }
+  if (lowerMessage.includes('fintech') || lowerMessage.includes('financial') || lowerMessage.includes('fintech')) {
+    eventTypes.push('fintech');
+  }
+  if (lowerMessage.includes('ai') || lowerMessage.includes('artificial intelligence') || lowerMessage.includes('machine learning') || lowerMessage.includes('ml')) {
+    eventTypes.push('ai_ml');
+  }
+  if (lowerMessage.includes('sustainability') || lowerMessage.includes('sustainable') || lowerMessage.includes('green') || lowerMessage.includes('climate')) {
+    eventTypes.push('sustainability');
+  }
+  if (lowerMessage.includes('healthcare') || lowerMessage.includes('health care') || lowerMessage.includes('medical')) {
+    eventTypes.push('healthcare_tech');
+  }
+  
+  return eventTypes.length > 0 ? eventTypes : ['networking_event']; // Default to networking if no specific type detected
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -11,6 +82,26 @@ export default async function handler(req, res) {
     
     if (!message) {
       return res.status(400).json({ ok: false, error: 'Message is required' });
+    }
+
+    // Load outfit recommendations from CSV
+    const outfitRecommendations = loadOutfitRecommendations();
+    const eventTypes = analyzeEventTypes(message);
+    
+    // Find matching recommendations
+    const matchingRecommendations = outfitRecommendations.filter(rec => 
+      eventTypes.includes(rec.event_type)
+    );
+    
+    if (matchingRecommendations.length > 0) {
+      // Use the first matching recommendation
+      const recommendation = matchingRecommendations[0];
+      return res.status(200).json({ 
+        ok: true, 
+        recommendation: recommendation.outfit_recommendation,
+        reasoning: recommendation.reasoning,
+        eventTypes: eventTypes
+      });
     }
 
     const openai = getOpenAI();
