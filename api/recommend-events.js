@@ -9,6 +9,88 @@ function sanitizeLikeValue(s) {
   return s.replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function generateEventCategory(eventName, eventDescription, eventTags = []) {
+  // Convert all text to lowercase for case-insensitive matching
+  const name = (eventName || '').toLowerCase();
+  const description = (eventDescription || '').toLowerCase();
+  const tags = eventTags.map(tag => tag.toLowerCase());
+  const allText = `${name} ${description} ${tags.join(' ')}`;
+  
+  // Business Casual - Networking Mixers, Happy Hours, Co-founder Matchups, Pitch Nights, Demo Days, Investor Panels, Startup Showcases
+  const businessCasualKeywords = [
+    'networking', 'mixer', 'happy hour', 'co-founder', 'cofounder', 'co founder',
+    'founder', 'entrepreneur', 'startup', 'business', 'professional', 'meetup',
+    'connect', 'collaboration', 'partnership', 'matchup', 'venture', 'funding',
+    'angel', 'vc', 'investment', 'capital', 'investor', 'tech', 'ai', 'fintech',
+    'wellness', 'health', 'sustainability', 'blockchain', 'web3', 'crypto',
+    'pitch night', 'demo day', 'investor panel', 'startup showcase', 'presentation',
+    'pitch', 'showcase', 'demo', 'equity round', 'series round', 'seed round'
+  ];
+  
+  // Casual Creative - Community Events, Creative Collabs, Founder Therapy, Coffee Walks, AI Bootcamps, Coding Nights, Founder Work Sessions
+  const casualCreativeKeywords = [
+    'community', 'creative', 'collab', 'therapy', 'coffee walk', 'ai bootcamp',
+    'coding night', 'work session', 'workshop', 'learning', 'education', 'skill',
+    'development', 'creative', 'art', 'design', 'innovation', 'brainstorm',
+    'ideation', 'hackathon', 'build', 'create', 'collaborative'
+  ];
+  
+  // Activity - Pickleball, Hiking, Morning Yoga, Run Clubs
+  const activityKeywords = [
+    'pickleball', 'hiking', 'yoga', 'run club', 'running', 'fitness', 'exercise',
+    'sport', 'physical', 'outdoor', 'walk', 'jog', 'workout', 'gym', 'tennis',
+    'basketball', 'soccer', 'volleyball', 'cycling', 'bike', 'swimming'
+  ];
+  
+  // Daytime Social - Brunches, Founder Lunches, Garden Parties
+  const daytimeSocialKeywords = [
+    'brunch', 'lunch', 'garden party', 'daytime', 'morning', 'afternoon',
+    'breakfast', 'dining', 'food', 'meal', 'social', 'gathering', 'party',
+    'celebration', 'festival', 'fair', 'market', 'outdoor dining'
+  ];
+  
+  // Evening Social - Dinners, House Parties, Rooftop Hangouts, After Parties
+  const eveningSocialKeywords = [
+    'dinner', 'house party', 'rooftop', 'after party', 'evening', 'night',
+    'party', 'social', 'hangout', 'get together', 'celebration', 'drinks',
+    'cocktail', 'wine', 'beer', 'socializing', 'nightlife', 'club', 'bar'
+  ];
+  
+  // Check for matches in order of specificity
+  const checkKeywords = (keywords) => {
+    return keywords.some(keyword => 
+      allText.includes(keyword) || 
+      name.includes(keyword) || 
+      description.includes(keyword) ||
+      tags.some(tag => tag.includes(keyword))
+    );
+  };
+  
+  // Return category based on keyword matches
+  if (checkKeywords(businessCasualKeywords)) {
+    return 'Business Casual';
+  } else if (checkKeywords(casualCreativeKeywords)) {
+    return 'Casual Creative';
+  } else if (checkKeywords(activityKeywords)) {
+    return 'Activity';
+  } else if (checkKeywords(daytimeSocialKeywords)) {
+    return 'Daytime Social';
+  } else if (checkKeywords(eveningSocialKeywords)) {
+    return 'Evening Social';
+  } else {
+    // Default fallback based on common patterns
+    if (allText.includes('networking') || allText.includes('meet') || allText.includes('connect')) {
+      return 'Business Casual';
+    } else if (allText.includes('party') || allText.includes('social') || allText.includes('hangout')) {
+      return 'Evening Social';
+    } else if (allText.includes('workshop') || allText.includes('learn') || allText.includes('education')) {
+      return 'Casual Creative';
+    } else {
+      return 'Business Casual'; // Default fallback
+    }
+  }
+}
+
 async function extractUserContext(message, openai) {
   if (!openai) {
     // Simple fallback extraction
@@ -263,7 +345,7 @@ Return JSON in this format:
         { role: 'user', content: `Please select the best events for: "${userMessage}"` }
       ],
       temperature: 0.1,
-      max_tokens: 1000
+      max_tokens: 500
     });
 
     const responseText = response.choices?.[0]?.message?.content || '';
@@ -426,6 +508,7 @@ module.exports = async (req, res) => {
       tags: e.event_tags,
       women_specific: e.women_specific,
       invite_only: e.invite_only,
+      event_category: generateEventCategory(e.event_name, e.event_description, e.event_tags),
       aiExplanation: e.aiExplanation || 'Selected based on relevance to your query'
     }));
     console.log(`✅ Shaped ${results.length} results`);

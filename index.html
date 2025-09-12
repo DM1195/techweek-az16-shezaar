@@ -964,36 +964,44 @@
       }
       
       function showOutfitModal(data) {
-        const eventTypes = data.eventTypes || [];
-        const eventTypeLabels = {
-          'investor_meeting': 'Investor Meeting',
-          'startup_pitch': 'Startup Pitch',
-          'co_founder_meetup': 'Co-founder Meetup',
-          'networking_event': 'Networking Event',
-          'tech_meetup': 'Tech Meetup',
-          'wellness_tech': 'Wellness Tech',
-          'fintech': 'Fintech',
-          'ai_ml': 'AI/ML',
-          'sustainability': 'Sustainability',
-          'healthcare_tech': 'Healthcare Tech'
-        };
+        const eventCategories = data.eventCategories || [];
+        const outfitRecommendations = data.outfitRecommendations || [];
         
-        outfitContent.innerHTML = `
-          ${eventTypes.length > 0 ? `
+        // If we have specific outfit recommendations from database, show them by category
+        if (outfitRecommendations.length > 0) {
+          outfitContent.innerHTML = `
             <div class="event-types">
-              <h5>Detected Event Types:</h5>
+              <h5>Event Categories for Your Recommended Events:</h5>
               <div class="tags">
-                ${eventTypes.map(type => `<span class="tag">${eventTypeLabels[type] || type}</span>`).join('')}
+                ${eventCategories.map(category => `<span class="tag">${category}</span>`).join('')}
               </div>
             </div>
-          ` : ''}
-          
-          <div class="outfit-recommendation">
-            <h4>Recommended Outfit</h4>
-            <p>${data.recommendation || 'No outfit recommendation available.'}</p>
-            ${data.reasoning ? `<p><strong>Why this outfit:</strong> ${data.reasoning}</p>` : ''}
-          </div>
-        `;
+            
+            ${outfitRecommendations.map(rec => `
+              <div class="outfit-recommendation">
+                <h4>${rec.event_category} Events</h4>
+                <p><strong>Outfit:</strong> ${rec.outfit_recommendation}</p>
+                <p><strong>Why this outfit:</strong> ${rec.reasoning}</p>
+              </div>
+            `).join('')}
+          `;
+        } else {
+          // Fallback to general recommendation
+          outfitContent.innerHTML = `
+            <div class="event-types">
+              <h5>Event Categories for Your Recommended Events:</h5>
+              <div class="tags">
+                ${eventCategories.map(category => `<span class="tag">${category}</span>`).join('')}
+              </div>
+            </div>
+            
+            <div class="outfit-recommendation">
+              <h4>General Outfit Recommendation</h4>
+              <p>${data.recommendation || 'No outfit recommendation available.'}</p>
+              ${data.reasoning ? `<p><strong>Why this outfit:</strong> ${data.reasoning}</p>` : ''}
+            </div>
+          `;
+        }
         
         // Show modal
         outfitModal.classList.add('show');

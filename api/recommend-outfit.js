@@ -1,75 +1,51 @@
 const { getSupabaseClient } = require('./_supabase');
 const { getOpenAI } = require('./_openai');
-const fs = require('fs');
-const path = require('path');
 
-// Load outfit recommendations from CSV
-function loadOutfitRecommendations() {
+// Get outfit recommendations from Supabase based on event categories
+async function getOutfitRecommendationsFromSupabase(eventCategories) {
   try {
-    const csvPath = path.join(process.cwd(), 'outfit-recommendations.csv');
-    const csvContent = fs.readFileSync(csvPath, 'utf8');
-    const lines = csvContent.split('\n').filter(line => line.trim());
-    const recommendations = [];
-    
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i];
-      // Simple CSV parsing - find the first two commas to split into 3 parts
-      const firstComma = line.indexOf(',');
-      const secondComma = line.indexOf(',', firstComma + 1);
-      
-      if (firstComma !== -1 && secondComma !== -1) {
-        recommendations.push({
-          event_type: line.substring(0, firstComma),
-          outfit_recommendation: line.substring(firstComma + 1, secondComma),
-          reasoning: line.substring(secondComma + 1)
-        });
-      }
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      console.error('Supabase client not available');
+      return [];
     }
-    
-    return recommendations;
+
+    // Get outfit recommendations for the given event categories
+    const { data, error } = await supabase
+      .from('Outfit Recommendations')
+      .select('*')
+      .in('event_category', eventCategories);
+
+    if (error) {
+      console.error('Error fetching outfit recommendations:', error);
+      return [];
+    }
+
+    return data || [];
   } catch (error) {
-    console.error('Error loading outfit recommendations:', error);
+    console.error('Error in getOutfitRecommendationsFromSupabase:', error);
     return [];
   }
 }
 
-// Analyze message to determine event types
-function analyzeEventTypes(message) {
-  const lowerMessage = message.toLowerCase();
-  const eventTypes = [];
-  
-  if (lowerMessage.includes('investor') || lowerMessage.includes('angel') || lowerMessage.includes('funding') || lowerMessage.includes('vc')) {
-    eventTypes.push('investor_meeting');
+// Get recommended events to extract their categories
+async function getRecommendedEvents(message) {
+  try {
+    const response = await fetch(`${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}/api/recommend-events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, limit: 10 }) // Get fewer events just for categories
+    });
+    
+    const data = await response.json();
+    if (data.ok && data.results) {
+      return data.results;
+    }
+    return [];
+  } catch (error) {
+    console.error('Error fetching recommended events:', error);
+    return [];
   }
-  if (lowerMessage.includes('co-founder') || lowerMessage.includes('cofounder') || lowerMessage.includes('founder')) {
-    eventTypes.push('co_founder_meetup');
-  }
-  if (lowerMessage.includes('startup') || lowerMessage.includes('pitch') || lowerMessage.includes('pitching')) {
-    eventTypes.push('startup_pitch');
-  }
-  if (lowerMessage.includes('networking') || lowerMessage.includes('network')) {
-    eventTypes.push('networking_event');
-  }
-  if (lowerMessage.includes('tech') || lowerMessage.includes('technology')) {
-    eventTypes.push('tech_meetup');
-  }
-  if (lowerMessage.includes('wellness') || lowerMessage.includes('health') || lowerMessage.includes('fitness')) {
-    eventTypes.push('wellness_tech');
-  }
-  if (lowerMessage.includes('fintech') || lowerMessage.includes('financial') || lowerMessage.includes('fintech')) {
-    eventTypes.push('fintech');
-  }
-  if (lowerMessage.includes('ai') || lowerMessage.includes('artificial intelligence') || lowerMessage.includes('machine learning') || lowerMessage.includes('ml')) {
-    eventTypes.push('ai_ml');
-  }
-  if (lowerMessage.includes('sustainability') || lowerMessage.includes('sustainable') || lowerMessage.includes('green') || lowerMessage.includes('climate')) {
-    eventTypes.push('sustainability');
-  }
-  if (lowerMessage.includes('healthcare') || lowerMessage.includes('health care') || lowerMessage.includes('medical')) {
-    eventTypes.push('healthcare_tech');
-  }
-  
-  return eventTypes.length > 0 ? eventTypes : ['networking_event']; // Default to networking if no specific type detected
 }
 
 export default async function handler(req, res) {
@@ -84,91 +60,63 @@ export default async function handler(req, res) {
       return res.status(400).json({ ok: false, error: 'Message is required' });
     }
 
-    // Load outfit recommendations from CSV
-    const outfitRecommendations = loadOutfitRecommendations();
-    const eventTypes = analyzeEventTypes(message);
+    // Get recommended events to extract their categories
+    const recommendedEvents = await getRecommendedEvents(message);
     
-    // Find matching recommendations
-    const matchingRecommendations = outfitRecommendations.filter(rec => 
-      eventTypes.includes(rec.event_type)
-    );
-    
-    if (matchingRecommendations.length > 0) {
-      // Use the first matching recommendation
-      const recommendation = matchingRecommendations[0];
-      return res.status(200).json({ 
-        ok: true, 
-        recommendation: recommendation.outfit_recommendation,
-        reasoning: recommendation.reasoning,
-        eventTypes: eventTypes
-      });
-    }
-
-    const openai = getOpenAI();
-    
-    if (!openai) {
-      // Fallback recommendation without OpenAI
+    if (recommendedEvents.length === 0) {
+      // Fallback if no events found
       const fallbackRecommendation = generateFallbackOutfitRecommendation(message);
       return res.status(200).json({ 
         ok: true, 
         recommendation: fallbackRecommendation,
-        reasoning: "Based on your description, here's a general outfit recommendation for SF Tech Week events."
+        reasoning: "Based on your description, here's a general outfit recommendation for SF Tech Week events.",
+        eventCategories: ['General']
       });
     }
 
-    // Use OpenAI to generate outfit recommendation
-    const systemPrompt = `You are a fashion consultant specializing in SF Tech Week events. Based on the user's goals and the type of events they're attending, recommend appropriate outfits.
-
-Consider:
-- Professional networking events (business casual to smart casual)
-- Startup pitch events (professional but approachable)
-- Tech meetups (casual to business casual)
-- Investor meetings (professional)
-- Co-founder meetups (smart casual)
-- Industry-specific events (appropriate for that industry)
-
-Provide:
-1. A specific outfit recommendation with clothing items
-2. Brief reasoning for why this outfit works for their goals
-3. Consider the SF climate and tech culture
-
-Keep recommendations practical and achievable.`;
-
-    const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: message }
-      ],
-      max_tokens: 500,
-      temperature: 0.7
-    });
-
-    const response = completion.choices[0]?.message?.content || '';
+    // Extract unique event categories from recommended events
+    const eventCategories = [...new Set(recommendedEvents.map(event => event.event_category).filter(Boolean))];
     
-    // Parse the response to extract recommendation and reasoning
-    const lines = response.split('\n').filter(line => line.trim());
-    let recommendation = '';
-    let reasoning = '';
-    
-    // Simple parsing - look for key sections
-    let currentSection = 'recommendation';
-    for (const line of lines) {
-      if (line.toLowerCase().includes('reasoning') || line.toLowerCase().includes('why')) {
-        currentSection = 'reasoning';
-        continue;
-      }
-      if (currentSection === 'recommendation') {
-        recommendation += line + ' ';
-      } else {
-        reasoning += line + ' ';
-      }
+    if (eventCategories.length === 0) {
+      // Fallback if no categories found
+      const fallbackRecommendation = generateFallbackOutfitRecommendation(message);
+      return res.status(200).json({ 
+        ok: true, 
+        recommendation: fallbackRecommendation,
+        reasoning: "Based on your description, here's a general outfit recommendation for SF Tech Week events.",
+        eventCategories: ['General']
+      });
     }
 
-    res.status(200).json({ 
+    // Get outfit recommendations from Supabase for these categories
+    const outfitRecommendations = await getOutfitRecommendationsFromSupabase(eventCategories);
+    
+    if (outfitRecommendations.length > 0) {
+      // Combine all recommendations for the categories
+      const combinedRecommendation = outfitRecommendations.map(rec => 
+        `**${rec.event_category}**: ${rec.outfit_recommendation}`
+      ).join('\n\n');
+      
+      const combinedReasoning = outfitRecommendations.map(rec => 
+        `**${rec.event_category}**: ${rec.reasoning}`
+      ).join('\n\n');
+      
+      return res.status(200).json({ 
+        ok: true, 
+        recommendation: combinedRecommendation,
+        reasoning: combinedReasoning,
+        eventCategories: eventCategories,
+        outfitRecommendations: outfitRecommendations
+      });
+    }
+
+    // Fallback if no outfit recommendations found in database
+    const fallbackRecommendation = generateFallbackOutfitRecommendation(message);
+    return res.status(200).json({ 
       ok: true, 
-      recommendation: recommendation.trim() || response,
-      reasoning: reasoning.trim() || "This outfit is recommended based on your goals and the types of events you're planning to attend."
+      recommendation: fallbackRecommendation,
+      reasoning: "Based on your description, here's a general outfit recommendation for SF Tech Week events.",
+      eventCategories: eventCategories
     });
 
   } catch (error) {
@@ -180,7 +128,8 @@ Keep recommendations practical and achievable.`;
     res.status(200).json({ 
       ok: true, 
       recommendation: fallbackRecommendation,
-      reasoning: "Here's a general outfit recommendation for SF Tech Week events."
+      reasoning: "Here's a general outfit recommendation for SF Tech Week events.",
+      eventCategories: ['General']
     });
   }
 }

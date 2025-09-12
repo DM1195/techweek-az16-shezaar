@@ -161,7 +161,7 @@ def generate_event_tags(description: str, event_name: str = "", hosted_by: str =
         """
         
         response = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are an expert at categorizing tech events. Generate relevant, concise tags."},
                 {"role": "user", "content": prompt}
@@ -223,7 +223,7 @@ def generate_industry_tags(description: str, event_name: str = "", hosted_by: st
         """
         
         response = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are an expert at categorizing tech events by industry. Generate relevant industry tags."},
                 {"role": "user", "content": prompt}
@@ -314,7 +314,7 @@ def generate_usage_tags(description: str, event_name: str = "", hosted_by: str =
         """
         
         response = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are an expert at analyzing tech events for their potential uses. Generate relevant usage tags."},
                 {"role": "user", "content": prompt}
