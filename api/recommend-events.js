@@ -44,19 +44,19 @@ async function extractPreferences(message, openai) {
     };
   }
 
-  const system = `You extract structured event preferences from a user message about finding SF Tech Week events.
+  const system = `You are an expert at understanding user intent for SF Tech Week event recommendations. Extract structured preferences from user messages.
+
 Focus on identifying:
-- Industries: wellness, health tech, fitness, AI, blockchain, fintech, etc.
-- Goals: meeting investors/angels, finding co-founders, networking, learning, funding, etc.
-- Location preferences: SOMA, FiDi, Mission, etc.
+- Industries: wellness, health tech, fitness, AI, blockchain, fintech, startup, etc.
+- Goals: meeting investors/angels, finding co-founders, networking, learning, funding, hiring, etc.
+- Location preferences: SOMA, FiDi, Mission, South Beach, etc.
 - Time preferences: morning, afternoon, evening, specific days
 - Budget: free, paid, low-cost
+- Event types: networking, panels, demos, pitch events, etc.
 
 Return strict JSON with keys: industries (string[]), goals (string[]), location (string|null), day_of_week (string[] values among Mon,Tue,Wed,Thu,Fri,Sat,Sun), time_window ("morning"|"afternoon"|"evening"|null), budget ("free"|"paid"|null), keywords (string).
 
-For wellness tech platforms looking for angels and co-founders, prioritize:
-- industries: ["wellness", "health tech", "fitness tech", "AI", "startup"]
-- goals: ["meet investors", "find angels", "find co-founders", "networking", "funding"]`;
+Be intelligent about understanding context - if someone mentions "wellness tech platform" they likely want health/wellness events, if they mention "co-founders" they want networking events, if they mention "angels" they want investor events.`;
 
   const user = `User message: ${message}`;
 
@@ -112,77 +112,13 @@ async function fetchCandidateEvents(supabase, prefs, limit = 200) {
       .limit(limit);
     console.log('✅ Base query built');
 
-    // Build search terms from extracted preferences
-    const searchTerms = [];
-    
-    // Add keywords from the user message
-    if (prefs.keywords) {
-      searchTerms.push(prefs.keywords);
-    }
-    
-    // Add industries
-    if (prefs.industries && prefs.industries.length > 0) {
-      searchTerms.push(...prefs.industries);
-    }
-    
-    // Add goals
-    if (prefs.goals && prefs.goals.length > 0) {
-      searchTerms.push(...prefs.goals);
-    }
-    
-    // Add location if specified
-    if (prefs.location) {
-      searchTerms.push(prefs.location);
-    }
-    
-    // Add specific terms for wellness tech, angels, and co-founders
-    const message = prefs.keywords?.toLowerCase() || '';
-    if (message.includes('wellness') || message.includes('health') || message.includes('fitness')) {
-      searchTerms.push('wellness', 'health', 'fitness', 'mental health', 'wellbeing');
-    }
-    if (message.includes('angel') || message.includes('investor') || message.includes('vc')) {
-      searchTerms.push('angel', 'investor', 'vc', 'funding', 'investment', 'capital');
-    }
-    if (message.includes('co-founder') || message.includes('founder') || message.includes('startup')) {
-      searchTerms.push('founder', 'co-founder', 'startup', 'entrepreneur', 'founders');
-    }
-    
-    console.log('🔧 Search terms built:', searchTerms);
-
-    // For now, let's skip the search filter to avoid the JSON operator error
-    // We'll rely on the embedding ranking to find relevant events
-    console.log('⚠️ Skipping search filter to avoid JSON operator error');
-    console.log('🔧 Will rely on embedding ranking for relevance');
-
     console.log('🔧 Executing database query...');
     const { data, error } = await query;
     
     if (error) {
       console.error('❌ Database query error:', error);
       console.error('❌ Error details:', JSON.stringify(error, null, 2));
-      
-      // Fallback: try without search filter
-      console.log('🔄 Attempting fallback query without search filter...');
-      try {
-        const fallbackQuery = supabase
-          .from(TABLE)
-          .select('id,event_name,event_date,event_time,event_location,event_description,hosted_by,price,event_url,event_tags,invite_only,event_name_and_link,updated_at')
-          .order('updated_at', { ascending: false })
-          .limit(limit);
-        
-        const { data: fallbackData, error: fallbackError } = await fallbackQuery;
-        
-        if (fallbackError) {
-          console.error('❌ Fallback query also failed:', fallbackError);
-          throw error; // Throw original error
-        }
-        
-        console.log(`✅ Fallback query succeeded, found ${fallbackData?.length || 0} events`);
-        return fallbackData || [];
-      } catch (fallbackErr) {
-        console.error('❌ Fallback query failed:', fallbackErr);
-        throw error; // Throw original error
-      }
+      throw error;
     }
     
     console.log(`✅ Found ${data?.length || 0} candidate events`);
@@ -261,8 +197,8 @@ function cosineSimilarity(a, b) {
   return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-8);
 }
 
-async function rankWithEmbeddings(openai, supabase, prefs, candidates, topK = 10) {
-  console.log('🔧 Starting embedding ranking...');
+async function intelligentRanking(openai, prefs, candidates, topK = 10) {
+  console.log('🔧 Starting intelligent ranking...');
   console.log('🔧 Candidates count:', candidates?.length || 0);
   console.log('🔧 OpenAI available:', !!openai);
   
@@ -270,50 +206,89 @@ async function rankWithEmbeddings(openai, supabase, prefs, candidates, topK = 10
     console.log('⚠️ No OpenAI or candidates, returning first', topK, 'candidates');
     return candidates.slice(0, topK);
   }
-  
-  // Ensure embeddings exist in DB for these candidates
-  console.log('🔧 Ensuring embeddings exist...');
-  await ensureEmbeddingsForEvents(openai, supabase, candidates);
-  
-  // Re-fetch candidates with embeddings
-  const ids = candidates.map((e) => e.id).filter(Boolean);
-  console.log('🔧 Re-fetching candidates with embeddings, IDs:', ids.length);
-  
-  if (!ids.length) {
-    console.log('⚠️ No valid IDs, returning first', topK, 'candidates');
-    return candidates.slice(0, topK);
-  }
-  
-  const { data, error } = await supabase.from(TABLE).select('id,event_name,event_description,event_date,event_time,event_location,hosted_by,price,event_url,event_tags,invite_only,event_name_and_link,updated_at,embedding').in('id', ids);
-  if (error) {
-    console.error('❌ Error fetching candidates with embeddings:', error);
-    return candidates.slice(0, topK);
-  }
-  
-  const haveEmb = data.filter((e) => Array.isArray(e.embedding));
-  console.log('🔧 Candidates with embeddings:', haveEmb.length);
-  
-  if (!haveEmb.length) {
-    console.log('⚠️ No embeddings found, returning first', topK, 'candidates');
-    return candidates.slice(0, topK);
-  }
 
-  // Create user query text for embedding
-  const userText = [prefs.keywords, ...(prefs.goals||[]), ...(prefs.industries||[])].filter(Boolean).join(' ').trim() || 'events that match my goals';
-  console.log('🔧 User query text:', userText);
-  
   try {
-    const userEmb = (await openai.embeddings.create({ model: EMBEDDING_MODEL, input: userText })).data[0].embedding;
-    console.log('🔧 User embedding created, length:', userEmb.length);
-
-    const scored = haveEmb.map((e) => ({ e, score: cosineSimilarity(userEmb, e.embedding) }));
-    scored.sort((a, b) => b.score - a.score);
+    // Create a detailed context for OpenAI to understand the user's needs
+    const userQuery = prefs.keywords || '';
+    const userGoals = prefs.goals || [];
+    const userIndustries = prefs.industries || [];
     
-    const results = scored.slice(0, topK).map((x) => x.e);
-    console.log('✅ Embedding ranking complete, returning', results.length, 'results');
-    return results;
-  } catch (embError) {
-    console.error('❌ Error creating user embedding:', embError);
+    // Prepare event data for OpenAI analysis
+    const eventSummaries = candidates.slice(0, 50).map((event, index) => {
+      return `${index + 1}. ${event.event_name}
+   Date: ${event.event_date || 'TBA'}
+   Time: ${event.event_time || 'TBA'}
+   Location: ${event.event_location || 'TBA'}
+   Host: ${event.hosted_by || 'TBA'}
+   Price: ${event.price || 'TBA'}
+   Description: ${event.event_description ? event.event_description.substring(0, 300) + '...' : 'No description'}
+   Tags: ${event.event_tags ? event.event_tags.join(', ') : 'None'}`;
+    }).join('\n\n');
+
+    const systemPrompt = `You are an expert event recommendation assistant for SF Tech Week. Your job is to analyze a user's query and find the most relevant events from a list.
+
+User Query: "${userQuery}"
+User Goals: ${userGoals.join(', ')}
+User Industries: ${userIndustries.join(', ')}
+
+Here are the available events:
+${eventSummaries}
+
+Please analyze the user's query and select the ${topK} most relevant events. Consider:
+1. Direct keyword matches in event names, descriptions, and tags
+2. Industry relevance (wellness, health tech, AI, etc.)
+3. Networking goals (finding co-founders, investors, etc.)
+4. Event type and format
+5. Location preferences
+6. Time and date relevance
+
+Return ONLY a JSON array of event indices (1-based) in order of relevance, like: [3, 7, 12, 1, 8, ...]`;
+
+    console.log('🔧 Sending to OpenAI for intelligent ranking...');
+    const response = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Please rank the most relevant events for: "${userQuery}"` }
+      ],
+      temperature: 0.3,
+      max_tokens: 500
+    });
+
+    const responseText = response.choices?.[0]?.message?.content || '';
+    console.log('🔧 OpenAI response:', responseText);
+
+    // Parse the response to get event indices
+    let selectedIndices = [];
+    try {
+      // Try to extract JSON array from response
+      const jsonMatch = responseText.match(/\[[\d\s,]+\]/);
+      if (jsonMatch) {
+        selectedIndices = JSON.parse(jsonMatch[0]);
+      } else {
+        // Fallback: look for numbers in the response
+        const numbers = responseText.match(/\d+/g);
+        if (numbers) {
+          selectedIndices = numbers.slice(0, topK).map(n => parseInt(n) - 1); // Convert to 0-based
+        }
+      }
+    } catch (parseError) {
+      console.error('❌ Error parsing OpenAI response:', parseError);
+      console.log('⚠️ Using fallback ranking');
+      return candidates.slice(0, topK);
+    }
+
+    // Map indices back to actual events
+    const rankedEvents = selectedIndices
+      .filter(idx => idx >= 0 && idx < candidates.length)
+      .map(idx => candidates[idx])
+      .filter(Boolean);
+
+    console.log(`✅ Intelligent ranking complete, returning ${rankedEvents.length} results`);
+    return rankedEvents.slice(0, topK);
+
+  } catch (error) {
+    console.error('❌ Error in intelligent ranking:', error);
     console.log('⚠️ Returning first', topK, 'candidates without ranking');
     return candidates.slice(0, topK);
   }
@@ -390,15 +365,15 @@ module.exports = async (req, res) => {
     const candidates = await fetchCandidateEvents(supabase, prefs, Math.max(50, limit * 10));
     console.log(`✅ Found ${candidates.length} candidate events`);
 
-    // 3) Rank with embeddings when available
-    console.log('🔧 Step 3: Ranking events...');
+    // 3) Use intelligent ranking with OpenAI
+    console.log('🔧 Step 3: Intelligent ranking with OpenAI...');
     let ranked;
     try {
-      ranked = await rankWithEmbeddings(openai, supabase, prefs, candidates, limit);
-      console.log(`✅ Ranked to ${ranked.length} events`);
+      ranked = await intelligentRanking(openai, prefs, candidates, limit);
+      console.log(`✅ Intelligently ranked to ${ranked.length} events`);
     } catch (rankError) {
-      console.error('❌ Error in ranking, using simple fallback:', rankError);
-      console.log('⚠️ Using simple text-based ranking fallback');
+      console.error('❌ Error in intelligent ranking, using simple fallback:', rankError);
+      console.log('⚠️ Using simple fallback ranking');
       // Simple fallback: just return the first N candidates
       ranked = candidates.slice(0, limit);
       console.log(`✅ Fallback: returning first ${ranked.length} events`);
