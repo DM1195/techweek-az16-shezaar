@@ -6,6 +6,24 @@
 echo "Tech Week SF Events Scraper"
 echo "=========================="
 
+# Check for enhanced mode
+if [ "$1" = "--enhanced" ] || [ "$1" = "-e" ]; then
+    echo "Running in ENHANCED mode with usage tags..."
+    echo "This will add AI-generated usage tags to help with recommendations."
+    echo ""
+    
+    # Check for OpenAI API key
+    if [ -z "$OPENAI_API_KEY" ]; then
+        echo "Error: Enhanced mode requires OpenAI API key"
+        echo "Please set: export OPENAI_API_KEY='your-openai-api-key'"
+        exit 1
+    fi
+    
+    echo "Running enhanced scraper with usage tags..."
+    python3 run_enhanced_scraper.py
+    exit 0
+fi
+
 # Check if environment variables are set
 if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
     echo "Error: Missing required environment variables"

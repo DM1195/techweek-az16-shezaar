@@ -136,11 +136,6 @@
         flex-wrap: wrap;
       }
       
-      .row button {
-        flex: 1;
-        min-width: 150px;
-      }
-      
       button { 
         background: #daded8;
         color: #2c3424; 
@@ -456,12 +451,51 @@
         font-size: 13px;
       }
       
+      .floating-outfit-btn {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background: #daded8;
+        color: #2c3424;
+        border: none;
+        padding: 16px 24px;
+        border-radius: 50px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        box-shadow: 0 8px 25px rgba(218, 222, 216, 0.4);
+        transition: all 0.3s ease;
+        z-index: 1000;
+        animation: floatIn 0.5s ease-out;
+        border: 2px solid rgba(44, 52, 36, 0.1);
+      }
+      
+      .floating-outfit-btn:hover {
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 12px 35px rgba(218, 222, 216, 0.5);
+        background: rgba(218, 222, 216, 0.95);
+      }
+      
+      .floating-outfit-btn:active {
+        transform: translateY(-1px) scale(1.02);
+      }
+      
+      @keyframes floatIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px) scale(0.8);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+      
       @media (max-width: 768px) {
         .wrap { padding: 20px 16px; }
         .card { padding: 24px; }
         h1 { font-size: 24px; }
         .row { flex-direction: column; align-items: stretch; }
-        .row button { width: 100%; flex: none; }
         .logo-img { height: 32px; }
         .logo-text { font-size: 20px; }
         .footer { margin-top: 40px; }
@@ -485,6 +519,13 @@
           width: 100%;
           justify-content: space-between;
         }
+        
+        .floating-outfit-btn {
+          bottom: 20px;
+          right: 20px;
+          padding: 14px 20px;
+          font-size: 14px;
+        }
       }
     </style>
   </head>
@@ -503,7 +544,6 @@
         <textarea id="input" placeholder="I am building a wellness tech platform. I want to attend events to meet angels and other co-founders. No preference for time or days."></textarea>
         <div class="row">
           <button id="go">Find Events</button>
-          <button id="outfit-btn">Find the Perfect Outfit</button>
           <span id="status" class="status"></span>
         </div>
       </div>
@@ -564,6 +604,11 @@
         <div id="events"></div>
       </div>
       
+      <!-- Floating Outfit Button -->
+      <button id="outfit-btn" class="floating-outfit-btn" hidden>
+        Find the Perfect Outfit
+      </button>
+      
       <footer class="footer">
         <p>Powered by the minds behind <a href="https://www.shezaar.com" target="_blank" rel="noopener" class="shezaar-link">Shezaar</a></p>
       </footer>
@@ -585,6 +630,9 @@
       const clearFiltersBtn = $('clear-filters');
       const aiReasoningEl = $('ai-reasoning');
       const reasoningContentEl = $('reasoning-content');
+      
+      // Hide floating button initially
+      outfitBtn.hidden = true;
       
       let allEvents = [];
       let filteredEvents = [];
@@ -618,6 +666,7 @@
         
         btn.disabled = true; status.innerHTML = '<div class="loading"></div> Finding the best events for you...';
         out.hidden = true; eventsEl.innerHTML = ''; filtersEl.hidden = true;
+        outfitBtn.hidden = true; // Hide floating button during search
         try {
           const resp = await fetch('/api/recommend-events', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -637,6 +686,8 @@
             filtersEl.hidden = false;
             renderEvents();
             renderAIReasoning();
+            // Show floating outfit button
+            outfitBtn.hidden = false;
           } else {
             eventsEl.innerHTML = `
               <div class="event">
@@ -673,6 +724,7 @@
         out.hidden = true; 
         eventsEl.innerHTML = ''; 
         filtersEl.hidden = true;
+        outfitBtn.hidden = true; // Hide floating button while processing
         
         try {
           const resp = await fetch('/api/recommend-outfit', {
@@ -693,9 +745,11 @@
           `;
           
           out.hidden = false;
+          outfitBtn.hidden = false; // Show floating button again after outfit recommendation
         } catch (e) {
           console.error('Error:', e);
           status.innerHTML = `<div class="error">Error: ${e.message}</div>`;
+          outfitBtn.hidden = false; // Show floating button even on error
         } finally {
           outfitBtn.disabled = false; 
           if (!status.innerHTML.includes('error')) {

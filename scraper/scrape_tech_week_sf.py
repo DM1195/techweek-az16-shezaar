@@ -46,6 +46,7 @@ class Event:
     price: str
     event_url: str
     event_tags: list  # Will be stored as JSON array
+    usage_tags: list  # Will be stored as JSON array - tags for what the event can be used for
     invite_only: bool
 
 
@@ -178,6 +179,70 @@ def generate_event_tags(description: str, event_name: str = "", hosted_by: str =
         
     except Exception as e:
         print(f"Error generating tags: {e}")
+        return []
+
+
+def generate_usage_tags(description: str, event_name: str = "", hosted_by: str = "") -> list:
+    """Generate usage tags for an event using OpenAI to categorize what the event can be used for."""
+    if not description or len(description.strip()) < 10:
+        return []
+    
+    try:
+        prompt = f"""
+        Analyze this tech event and determine what it can be used for. Focus on these specific usage categories:
+        - find-cofounder: Events where you can meet potential co-founders, partners, or collaborators
+        - find-angels: Events where you can meet angel investors or early-stage investors
+        - find-advisors: Events where you can meet advisors, mentors, or industry experts
+        - find-users: Events where you can meet potential users, customers, or beta testers
+        - get-user-feedback: Events where you can get feedback on your product or idea
+        - find-investors: Events where you can meet VCs, institutional investors, or funding sources
+        - find-talent: Events where you can meet potential employees, contractors, or team members
+        - learn-skills: Events focused on learning, workshops, or skill development
+        - industry-insights: Events for staying updated on industry trends and insights
+        - networking: General networking events for building professional relationships
+        
+        Event Name: {event_name}
+        Hosted By: {hosted_by}
+        Description: {description[:500]}...
+        
+        Return only the relevant usage tags from the list above, comma-separated. 
+        Be generous - if an event could potentially be used for multiple purposes, include all relevant ones.
+        Use the exact tag names provided above.
+        
+        Examples: find-cofounder, find-angels, networking, learn-skills
+        """
+        
+        response = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are an expert at analyzing tech events for their potential uses. Generate relevant usage tags."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=150,
+            temperature=0.2
+        )
+        
+        tags_text = response.choices[0].message.content.strip()
+        # Clean up the response and convert to list
+        tags_text = re.sub(r'[^\w\s,-]', '', tags_text)  # Remove special chars except commas and hyphens
+        tags_text = re.sub(r'\s+', ' ', tags_text)  # Normalize whitespace
+        
+        # Split by comma and clean up each tag
+        tags = [tag.strip().lower() for tag in tags_text.split(',') if tag.strip()]
+        
+        # Validate tags against known usage categories
+        valid_usage_tags = {
+            'find-cofounder', 'find-angels', 'find-advisors', 'find-users', 
+            'get-user-feedback', 'find-investors', 'find-talent', 'learn-skills',
+            'industry-insights', 'networking'
+        }
+        
+        # Filter to only include valid tags
+        valid_tags = [tag for tag in tags if tag in valid_usage_tags]
+        return valid_tags
+        
+    except Exception as e:
+        print(f"Error generating usage tags: {e}")
         return []
 
 
@@ -503,6 +568,7 @@ def scrape_events(emit_json: bool = False) -> List[Event]:
                 price=clean_price_format(_clean_text(price)),
                 event_url=url,
                 event_tags=tags,  # Empty tags for now
+                usage_tags=[],  # Empty usage tags for now
                 invite_only=is_invite_only,
             )
             
@@ -523,6 +589,7 @@ def write_csv(events: List[Event], out_path: str) -> None:
         "price",
         "event_url",
         "event_tags",
+        "usage_tags",
         "invite_only",
         "event_name_and_link",  # Add composite key column
     ]
@@ -558,7 +625,7 @@ def update_csv_with_keywords(csv_path: str) -> None:
     
     print(f"Found {len(events)} events to update with keywords...")
     
-    # Update each event with keywords
+    # Update each event with keywords and usage tags
     for i, event in enumerate(events):
         print(f"Processing event {i+1}/{len(events)}: {event['event_name'][:50]}...")
         
@@ -569,6 +636,10 @@ def update_csv_with_keywords(csv_path: str) -> None:
         
         tags = generate_event_tags(description, event_name, hosted_by)
         event['event_tags'] = tags
+        
+        # Generate usage tags using OpenAI
+        usage_tags = generate_usage_tags(description, event_name, hosted_by)
+        event['usage_tags'] = usage_tags
         
         # Update the composite key
         event['event_name_and_link'] = f"{event['event_name']} | {event['event_url']}"
@@ -584,6 +655,8 @@ def update_csv_with_keywords(csv_path: str) -> None:
         "price",
         "event_url",
         "event_tags",
+        "usage_tags",
+        "invite_only",
         "event_name_and_link",
     ]
     

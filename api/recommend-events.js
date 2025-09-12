@@ -50,9 +50,12 @@ Focus on identifying:
 - Industries: wellness, health tech, fitness, AI, blockchain, fintech, startup, etc.
 - Goals: meeting investors/angels, finding co-founders, networking, learning, funding, hiring, etc.
 - Location preferences: SOMA, FiDi, Mission, South Beach, etc.
-- Time preferences: morning, afternoon, evening, specific days
+- Time preferences: morning, afternoon, evening, specific days (Oct 6-10, 2024)
 - Budget: free, paid, low-cost
 - Event types: networking, panels, demos, pitch events, etc.
+
+IMPORTANT: SF Tech Week runs from October 6-10, 2024. When users mention specific dates or days, map them to the correct day of week:
+- Oct 6 = Sun, Oct 7 = Mon, Oct 8 = Tue, Oct 9 = Wed, Oct 10 = Thu
 
 Return strict JSON with keys: industries (string[]), goals (string[]), location (string|null), day_of_week (string[] values among Mon,Tue,Wed,Thu,Fri,Sat,Sun), time_window ("morning"|"afternoon"|"evening"|null), budget ("free"|"paid"|null), keywords (string).
 
@@ -102,12 +105,154 @@ function buildTextFilters(prefs) {
   return likes;
 }
 
+function mapGoalsToUsageTags(goals) {
+  const goalToUsageTag = {
+    'meet investors': ['find-investors', 'find-angels'],
+    'find angels': ['find-angels'],
+    'find co-founders': ['find-cofounder'],
+    'meet founders': ['find-cofounder'],
+    'partnership': ['find-cofounder'],
+    'collaboration': ['find-cofounder'],
+    'funding': ['find-investors', 'find-angels'],
+    'investment': ['find-investors', 'find-angels'],
+    'advisors': ['find-advisors'],
+    'mentors': ['find-advisors'],
+    'users': ['find-users'],
+    'customers': ['find-users'],
+    'beta testers': ['find-users'],
+    'feedback': ['get-user-feedback'],
+    'talent': ['find-talent'],
+    'employees': ['find-talent'],
+    'hiring': ['find-talent'],
+    'learn': ['learn-skills'],
+    'skills': ['learn-skills'],
+    'workshop': ['learn-skills'],
+    'networking': ['networking'],
+    'connect': ['networking'],
+    'industry': ['industry-insights'],
+    'trends': ['industry-insights']
+  };
+  
+  const usageTags = new Set();
+  goals.forEach(goal => {
+    const tags = goalToUsageTag[goal.toLowerCase()] || [];
+    tags.forEach(tag => usageTags.add(tag));
+  });
+  
+  return Array.from(usageTags);
+}
+
+function filterEventsByUsageTags(events, usageTags) {
+  if (!usageTags || usageTags.length === 0) {
+    return events;
+  }
+  
+  return events.filter(event => {
+    const eventUsageTags = event.usage_tags || [];
+    return usageTags.some(tag => eventUsageTags.includes(tag));
+  });
+}
+
+function filterEventsByDate(events, dayOfWeek, timeWindow) {
+  if (!dayOfWeek || dayOfWeek.length === 0) {
+    return events;
+  }
+  
+  const dayMapping = {
+    'Mon': 'Monday',
+    'Tue': 'Tuesday', 
+    'Wed': 'Wednesday',
+    'Thu': 'Thursday',
+    'Fri': 'Friday',
+    'Sat': 'Saturday',
+    'Sun': 'Sunday'
+  };
+  
+  return events.filter(event => {
+    if (!event.event_date) return true;
+    
+    // Parse date and get day of week
+    const eventDate = new Date(event.event_date);
+    const eventDay = eventDate.toLocaleDateString('en-US', { weekday: 'long' });
+    
+    // Check if event day matches any preferred days
+    const matchesDay = dayOfWeek.some(day => {
+      const fullDayName = dayMapping[day] || day;
+      return eventDay.toLowerCase().includes(fullDayName.toLowerCase());
+    });
+    
+    if (!matchesDay) return false;
+    
+    // If time window is specified, filter by time
+    if (timeWindow && event.event_time) {
+      const time = event.event_time.toLowerCase();
+      const hour = parseInt(time.match(/(\d+)/)?.[1] || '0');
+      const isPM = time.includes('pm');
+      const hour24 = isPM && hour !== 12 ? hour + 12 : (!isPM && hour === 12 ? 0 : hour);
+      
+      switch (timeWindow) {
+        case 'morning':
+          return hour24 >= 6 && hour24 < 12;
+        case 'afternoon':
+          return hour24 >= 12 && hour24 < 17;
+        case 'evening':
+          return hour24 >= 17 || hour24 < 6;
+        default:
+          return true;
+      }
+    }
+    
+    return true;
+  });
+}
+
+function filterEventsByLocation(events, location) {
+  if (!location) return events;
+  
+  const locationKeywords = location.toLowerCase().split(/[,\s]+/).filter(w => w.length > 2);
+  
+  return events.filter(event => {
+    if (!event.event_location) return true;
+    
+    const eventLocation = event.event_location.toLowerCase();
+    return locationKeywords.some(keyword => eventLocation.includes(keyword));
+  });
+}
+
+function filterEventsByBudget(events, budget) {
+  if (!budget) return events;
+  
+  return events.filter(event => {
+    if (budget === 'free') {
+      return event.price === '0' || event.price === 0 || !event.price || event.price.toLowerCase().includes('free');
+    } else if (budget === 'paid') {
+      return event.price && event.price !== '0' && event.price !== 0 && !event.price.toLowerCase().includes('free');
+    }
+    return true;
+  });
+}
+
+function filterEventsByIndustry(events, industries) {
+  if (!industries || industries.length === 0) return events;
+  
+  const industryKeywords = industries.flatMap(ind => [
+    ind.toLowerCase(),
+    ind.replace(/\s+/g, '').toLowerCase(),
+    ind.replace(/\s+/g, '-').toLowerCase()
+  ]);
+  
+  return events.filter(event => {
+    const searchText = `${event.event_name} ${event.event_description || ''} ${event.event_tags?.join(' ') || ''}`.toLowerCase();
+    return industryKeywords.some(keyword => searchText.includes(keyword));
+  });
+}
+
 async function fetchCandidateEvents(supabase, prefs, limit = 200) {
   try {
     console.log('🔧 Building base query...');
     let query = supabase
       .from(TABLE)
-      .select('id,event_name,event_date,event_time,event_location,event_description,hosted_by,price,event_url,event_tags,invite_only,event_name_and_link,updated_at')
+      .select('id,event_name,event_date,event_time,event_location,event_description,hosted_by,price,event_url,event_tags,usage_tags,invite_only,event_name_and_link,updated_at')
       .order('updated_at', { ascending: false })
       .limit(limit);
     console.log('✅ Base query built');
@@ -122,7 +267,87 @@ async function fetchCandidateEvents(supabase, prefs, limit = 200) {
     }
     
     console.log(`✅ Found ${data?.length || 0} candidate events`);
-    return data || [];
+    
+    // Apply smart filtering based on user preferences
+    let filteredEvents = data || [];
+    const initialCount = filteredEvents.length;
+    console.log(`🔧 Starting with ${initialCount} events for smart filtering`);
+    
+    // 1. Filter by usage tags (goals) - most important filter
+    if (prefs.goals && prefs.goals.length > 0) {
+      const usageTags = mapGoalsToUsageTags(prefs.goals);
+      console.log('🔧 Mapped goals to usage tags:', usageTags);
+      
+      const beforeFilter = filteredEvents.length;
+      filteredEvents = filterEventsByUsageTags(filteredEvents, usageTags);
+      console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on usage tags`);
+    }
+    
+    // 2. Filter by industry keywords
+    if (prefs.industries && prefs.industries.length > 0) {
+      const beforeFilter = filteredEvents.length;
+      filteredEvents = filterEventsByIndustry(filteredEvents, prefs.industries);
+      console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on industry keywords`);
+    }
+    
+    // 3. Filter by date/time preferences
+    if (prefs.day_of_week && prefs.day_of_week.length > 0) {
+      const beforeFilter = filteredEvents.length;
+      filteredEvents = filterEventsByDate(filteredEvents, prefs.day_of_week, prefs.time_window);
+      console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on date/time preferences`);
+    }
+    
+    // 4. Filter by location
+    if (prefs.location) {
+      const beforeFilter = filteredEvents.length;
+      filteredEvents = filterEventsByLocation(filteredEvents, prefs.location);
+      console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on location`);
+    }
+    
+    // 5. Filter by budget
+    if (prefs.budget) {
+      const beforeFilter = filteredEvents.length;
+      filteredEvents = filterEventsByBudget(filteredEvents, prefs.budget);
+      console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on budget`);
+    }
+    
+    console.log(`🎯 Smart filtering complete: ${initialCount} → ${filteredEvents.length} events (${Math.round((1 - filteredEvents.length/initialCount) * 100)}% reduction)`);
+    
+    // If filtering is too aggressive (less than 5 events), fall back to less strict filtering
+    if (filteredEvents.length < 5 && initialCount > 10) {
+      console.log('⚠️ Too few events after filtering, applying fallback strategy...');
+      
+      // Fallback: only apply usage tag filtering (most important) and industry filtering
+      let fallbackEvents = data || [];
+      
+      if (prefs.goals && prefs.goals.length > 0) {
+        const usageTags = mapGoalsToUsageTags(prefs.goals);
+        fallbackEvents = filterEventsByUsageTags(fallbackEvents, usageTags);
+        console.log(`🔄 Fallback: ${fallbackEvents.length} events after usage tag filtering`);
+      }
+      
+      if (prefs.industries && prefs.industries.length > 0) {
+        fallbackEvents = filterEventsByIndustry(fallbackEvents, prefs.industries);
+        console.log(`🔄 Fallback: ${fallbackEvents.length} events after industry filtering`);
+      }
+      
+      // If still too few, just use usage tag filtering
+      if (fallbackEvents.length < 5 && prefs.goals && prefs.goals.length > 0) {
+        const usageTags = mapGoalsToUsageTags(prefs.goals);
+        fallbackEvents = filterEventsByUsageTags(data || [], usageTags);
+        console.log(`🔄 Final fallback: ${fallbackEvents.length} events with usage tags only`);
+      }
+      
+      // If still too few, return original data
+      if (fallbackEvents.length < 3) {
+        console.log('🔄 Using original unfiltered data as last resort');
+        return data || [];
+      }
+      
+      return fallbackEvents;
+    }
+    
+    return filteredEvents;
   } catch (err) {
     console.error('❌ Error in fetchCandidateEvents:', err);
     console.error('❌ Error stack:', err.stack);
@@ -215,31 +440,11 @@ async function intelligentRanking(openai, prefs, candidates, topK = 10) {
     const userGoals = prefs.goals || [];
     const userIndustries = prefs.industries || [];
     
-    // Step 1: Pre-filter events using keyword matching
-    console.log('🔧 Step 1: Pre-filtering events...');
-    const relevantEvents = candidates.filter(event => {
-      const searchText = `${event.event_name} ${event.event_description || ''} ${event.event_tags?.join(' ') || ''}`.toLowerCase();
-      const queryLower = userQuery.toLowerCase();
-      
-      // Look for industry keywords
-      const industryKeywords = userIndustries.flatMap(ind => [ind.toLowerCase(), ind.replace(' ', '').toLowerCase()]);
-      const goalKeywords = userGoals.flatMap(goal => [goal.toLowerCase(), goal.replace(' ', '').toLowerCase()]);
-      
-      // Check for direct matches
-      const hasIndustryMatch = industryKeywords.some(keyword => searchText.includes(keyword));
-      const hasGoalMatch = goalKeywords.some(keyword => searchText.includes(keyword));
-      const hasQueryMatch = queryLower.split(' ').some(word => 
-        word.length > 3 && searchText.includes(word)
-      );
-      
-      // Look for networking/investor keywords
-      const networkingKeywords = ['networking', 'investor', 'angel', 'funding', 'pitch', 'demo', 'founder', 'startup', 'vc'];
-      const hasNetworkingMatch = networkingKeywords.some(keyword => searchText.includes(keyword));
-      
-      return hasIndustryMatch || hasGoalMatch || hasQueryMatch || hasNetworkingMatch;
-    });
+    // Step 1: Events are already pre-filtered by smart filtering, so we can work with them directly
+    console.log('🔧 Step 1: Events already pre-filtered by smart filtering, using all candidates');
+    const relevantEvents = candidates;
     
-    console.log(`🔧 Pre-filtered to ${relevantEvents.length} relevant events`);
+    console.log(`🔧 Working with ${relevantEvents.length} pre-filtered events`);
     
     // Step 2: Use AI to rank the pre-filtered events
     if (relevantEvents.length === 0) {
@@ -253,8 +458,8 @@ async function intelligentRanking(openai, prefs, candidates, topK = 10) {
       };
     }
     
-    // Take only the most promising events for AI analysis
-    const eventsToAnalyze = relevantEvents.slice(0, 15);
+    // Take only the most promising events for AI analysis (reduced from 15 to 10 for efficiency)
+    const eventsToAnalyze = relevantEvents.slice(0, 10);
     
     const eventSummaries = eventsToAnalyze.map((event, index) => {
       return `${index + 1}. ${event.event_name}
@@ -267,28 +472,28 @@ async function intelligentRanking(openai, prefs, candidates, topK = 10) {
    Tags: ${event.event_tags ? event.event_tags.join(', ') : 'None'}`;
     }).join('\n\n');
 
-    const systemPrompt = `You are an expert event recommendation assistant. Analyze these events and select the most relevant ones.
+    const systemPrompt = `You are an expert event recommendation assistant. These events have already been pre-filtered based on the user's specific criteria (goals, industries, dates, location, budget). Your job is to rank and select the BEST matches from this curated list.
 
 User Query: "${userQuery}"
 User Goals: ${userGoals.join(', ')}
 User Industries: ${userIndustries.join(', ')}
 
-Events to analyze:
+Pre-filtered Events to analyze:
 ${eventSummaries}
 
-Focus on:
-1. Industry relevance (fashion tech, wellness, etc.)
-2. Networking goals (angels, co-founders, users)
-3. Event type (networking, pitch, demo, etc.)
-4. Date availability (user available until Oct 9th)
+Since these events are already filtered for relevance, focus on:
+1. Event quality and networking potential
+2. Specific match to user's stated goals
+3. Event timing and logistics
+4. Overall value and exclusivity
 
-Return JSON:
+Return JSON with your top recommendations:
 {
-  "reasoning": "Your analysis approach",
+  "reasoning": "Brief explanation of your selection approach",
   "selected_events": [
     {
       "index": 3,
-      "reason": "Why this event is perfect for the user"
+      "reason": "Why this event is the best match for the user"
     }
   ]
 }`;
