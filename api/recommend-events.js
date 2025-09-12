@@ -13,10 +13,29 @@ const EMBEDDING_MODEL = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-
 
 async function extractPreferences(message, openai) {
   if (!openai) {
-    // Minimal fallback: return the raw message as a keyword and defaults
+    // Enhanced fallback: better keyword extraction for wellness tech, angels, co-founders
+    const keywords = message?.toLowerCase() || '';
+    const industries = [];
+    const goals = [];
+    
+    // Extract wellness tech related terms
+    if (keywords.includes('wellness') || keywords.includes('health') || keywords.includes('fitness') || keywords.includes('mental health')) {
+      industries.push('wellness', 'health tech', 'fitness tech');
+    }
+    
+    // Extract investor/angel related terms
+    if (keywords.includes('angel') || keywords.includes('investor') || keywords.includes('vc') || keywords.includes('funding')) {
+      goals.push('meet investors', 'find angels', 'funding', 'investment');
+    }
+    
+    // Extract co-founder related terms
+    if (keywords.includes('co-founder') || keywords.includes('cofounder') || keywords.includes('founder') || keywords.includes('partner')) {
+      goals.push('find co-founders', 'meet founders', 'partnership', 'collaboration');
+    }
+    
     return {
-      industries: [],
-      goals: [],
+      industries,
+      goals,
       location: null,
       day_of_week: [],
       time_window: null,
@@ -25,8 +44,19 @@ async function extractPreferences(message, openai) {
     };
   }
 
-  const system = `You extract structured event preferences from a short user message.
-Return strict JSON with keys: industries (string[]), goals (string[]), location (string|null), day_of_week (string[] values among Mon,Tue,Wed,Thu,Fri,Sat,Sun), time_window ("morning"|"afternoon"|"evening"|null), budget ("free"|"paid"|null), keywords (string).`;
+  const system = `You extract structured event preferences from a user message about finding SF Tech Week events.
+Focus on identifying:
+- Industries: wellness, health tech, fitness, AI, blockchain, fintech, etc.
+- Goals: meeting investors/angels, finding co-founders, networking, learning, funding, etc.
+- Location preferences: SOMA, FiDi, Mission, etc.
+- Time preferences: morning, afternoon, evening, specific days
+- Budget: free, paid, low-cost
+
+Return strict JSON with keys: industries (string[]), goals (string[]), location (string|null), day_of_week (string[] values among Mon,Tue,Wed,Thu,Fri,Sat,Sun), time_window ("morning"|"afternoon"|"evening"|null), budget ("free"|"paid"|null), keywords (string).
+
+For wellness tech platforms looking for angels and co-founders, prioritize:
+- industries: ["wellness", "health tech", "fitness tech", "AI", "startup"]
+- goals: ["meet investors", "find angels", "find co-founders", "networking", "funding"]`;
 
   const user = `User message: ${message}`;
 
@@ -103,6 +133,18 @@ async function fetchCandidateEvents(supabase, prefs, limit = 200) {
       searchTerms.push(prefs.location);
     }
     
+    // Add specific terms for wellness tech, angels, and co-founders
+    const message = prefs.keywords?.toLowerCase() || '';
+    if (message.includes('wellness') || message.includes('health') || message.includes('fitness')) {
+      searchTerms.push('wellness', 'health', 'fitness', 'mental health', 'wellbeing');
+    }
+    if (message.includes('angel') || message.includes('investor') || message.includes('vc')) {
+      searchTerms.push('angel', 'investor', 'vc', 'funding', 'investment', 'capital');
+    }
+    if (message.includes('co-founder') || message.includes('founder') || message.includes('startup')) {
+      searchTerms.push('founder', 'co-founder', 'startup', 'entrepreneur', 'founders');
+    }
+    
     console.log('Search terms:', searchTerms);
 
     // If we have search terms, use them to filter events
@@ -123,7 +165,8 @@ async function fetchCandidateEvents(supabase, prefs, limit = 200) {
             `event_name.ilike.%${escapedTerm}%`,
             `event_description.ilike.%${escapedTerm}%`,
             `event_location.ilike.%${escapedTerm}%`,
-            `hosted_by.ilike.%${escapedTerm}%`
+            `hosted_by.ilike.%${escapedTerm}%`,
+            `event_tags.ilike.%${escapedTerm}%`
           );
         }
         
@@ -262,12 +305,14 @@ module.exports = async (req, res) => {
     const results = ranked.map((e) => ({
       id: e.id,
       name: e.event_name,
+      description: e.event_description,
       date: e.event_date,
       time: e.event_time,
       location: e.event_location,
       host: e.hosted_by,
       price: e.price,
-      url: e.event_url
+      url: e.event_url,
+      tags: e.event_tags
     }));
 
     // 5) Save query to database (optional - won't fail if table doesn't exist)

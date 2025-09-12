@@ -212,10 +212,35 @@
         gap: 12px;
       }
       
+      .event-description {
+        color: rgba(218, 222, 216, 0.8);
+        font-size: 14px;
+        margin-bottom: 12px;
+        line-height: 1.5;
+        font-style: italic;
+      }
+      
       .event-host {
         color: rgba(218, 222, 216, 0.9);
         font-size: 14px;
         margin-bottom: 12px;
+      }
+      
+      .event-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+      
+      .tag {
+        background: rgba(218, 222, 216, 0.1);
+        color: rgba(218, 222, 216, 0.9);
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        border: 1px solid rgba(218, 222, 216, 0.2);
       }
       
       .event-link {
@@ -303,7 +328,7 @@
       <div class="card">
         <h1>Find Your Perfect SF Tech Week Events</h1>
         <p class="subtitle">Tell us about your goals and we'll recommend the most relevant events for you. Whether you're looking for investors, co-founders, talent, or just want to network with like-minded people.</p>
-        <textarea id="input" placeholder="I'm building a wellness tech platform and looking for co-founders and investors. I prefer evening events in SoMa and free or low-cost events."></textarea>
+        <textarea id="input" placeholder="I am building a wellness tech platform. I want to attend events to meet angels and other co-founders. No preference for time or days."></textarea>
         <div class="row">
           <button id="go">🔍 Find Events</button>
           <span id="status" class="status"></span>
@@ -348,6 +373,7 @@
           eventsEl.innerHTML = data.results.map(r => `
             <div class="event">
                 <div class="event-title">${r.name}</div>
+                ${r.description ? `<div class="event-description">${r.description.length > 200 ? r.description.substring(0, 200) + '...' : r.description}</div>` : ''}
                 <div class="event-meta">
                   <span>📅 ${r.date || 'TBA'}</span>
                   <span>🕐 ${r.time || 'TBA'}</span>
@@ -355,6 +381,7 @@
                   <span>💰 ${r.price || 'TBA'}</span>
                 </div>
                 <div class="event-host">👤 Host: ${r.host || 'TBA'}</div>
+                ${r.tags ? `<div class="event-tags">${r.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div>` : ''}
                 <div><a href="${r.url}" target="_blank" rel="noopener" class="event-link">View details →</a></div>
             </div>
           `).join('');
