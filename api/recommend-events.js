@@ -22,18 +22,33 @@ async function extractUserContext(message, openai) {
       budget: null
     };
     
-    // Extract goals
-    if (keywords.includes('hire') || keywords.includes('hiring') || keywords.includes('engineers') || keywords.includes('talent')) {
+    // Extract goals - be more comprehensive
+    if (keywords.includes('hire') || keywords.includes('hiring') || keywords.includes('engineers') || keywords.includes('talent') || keywords.includes('recruit')) {
       context.goals.push('find-talent', 'hiring');
     }
-    if (keywords.includes('investor') || keywords.includes('funding') || keywords.includes('angel')) {
+    if (keywords.includes('investor') || keywords.includes('funding') || keywords.includes('angel') || keywords.includes('vc') || keywords.includes('venture')) {
       context.goals.push('find-investors', 'find-angels');
     }
-    if (keywords.includes('co-founder') || keywords.includes('cofounder') || keywords.includes('partner')) {
+    if (keywords.includes('co-founder') || keywords.includes('cofounder') || keywords.includes('co founder') || keywords.includes('partner') || keywords.includes('cofounder')) {
       context.goals.push('find-cofounder');
     }
-    if (keywords.includes('customer') || keywords.includes('user') || keywords.includes('client')) {
+    if (keywords.includes('customer') || keywords.includes('user') || keywords.includes('client') || keywords.includes('users')) {
       context.goals.push('find-users');
+    }
+    if (keywords.includes('advisor') || keywords.includes('mentor') || keywords.includes('guidance')) {
+      context.goals.push('find-advisors');
+    }
+    if (keywords.includes('network') || keywords.includes('networking') || keywords.includes('connect') || keywords.includes('meet')) {
+      context.goals.push('networking');
+    }
+    if (keywords.includes('learn') || keywords.includes('learning') || keywords.includes('skill') || keywords.includes('education')) {
+      context.goals.push('learn-skills');
+    }
+    if (keywords.includes('feedback') || keywords.includes('validate') || keywords.includes('test')) {
+      context.goals.push('get-user-feedback');
+    }
+    if (keywords.includes('insight') || keywords.includes('industry') || keywords.includes('trend')) {
+      context.goals.push('industry-insights');
     }
     
     // Extract industries
@@ -120,7 +135,7 @@ async function filterEvents(supabase, context, limit = 100) {
     // Apply broad filtering based on context
     let filteredEvents = data;
 
-    // Filter by usage tags (goals) - most important filter
+    // Filter by usage tags (goals) - most important filter, be strict
     if (context.goals && context.goals.length > 0) {
       const beforeFilter = filteredEvents.length;
       filteredEvents = filteredEvents.filter(event => {
@@ -130,8 +145,9 @@ async function filterEvents(supabase, context, limit = 100) {
       console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on goals`);
     }
 
-    // Filter by industry tags - broad matching (check both industry_tags and event_tags)
-    if (context.industries && context.industries.length > 0) {
+    // Filter by industry tags - be loose, only filter if we have too many results
+    // If we have fewer than 20 results after usage filtering, don't filter by industry
+    if (context.industries && context.industries.length > 0 && filteredEvents.length > 20) {
       const beforeFilter = filteredEvents.length;
       filteredEvents = filteredEvents.filter(event => {
         const eventIndustryTags = event.industry_tags || [];
@@ -145,7 +161,9 @@ async function filterEvents(supabase, context, limit = 100) {
           )
         );
       });
-      console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on industries`);
+      console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on industries (loose filtering)`);
+    } else if (context.industries && context.industries.length > 0) {
+      console.log(`✅ Skipping industry filtering - only ${filteredEvents.length} events after usage filtering`);
     }
 
     // Filter by location if specified
@@ -196,7 +214,7 @@ async function refineEventsWithAI(openai, userMessage, context, events, limit = 
     console.log('🔧 Refining events with AI...');
     
     // Prepare event summaries for AI analysis
-    const eventSummaries = events.slice(0, Math.min(50, events.length)).map((event, index) => {
+    const eventSummaries = events.slice(0, Math.min(100, events.length)).map((event, index) => {
       return `${index + 1}. ${event.event_name}
    Date: ${event.event_date || 'TBA'}
    Time: ${event.event_time || 'TBA'}
@@ -221,10 +239,11 @@ ${eventSummaries}
 Instructions:
 1. Select the top ${limit} most relevant events for this user
 2. For each selected event, provide a clear, concise explanation of why it's a good match
-3. Consider the user's goals, industries, and any specific requirements
-4. Prioritize events that directly address the user's stated needs
+3. PRIORITIZE events that match the user's primary goals (especially cofounder, investor, talent finding)
+4. Industry matching is secondary - include events that match goals even if industry doesn't perfectly align
 5. If the user is looking for women-specific events, prioritize those
 6. Consider event quality, networking potential, and relevance
+7. For cofounder queries, prioritize events with 'find-cofounder' usage tags
 
 Return JSON in this format:
 {
@@ -381,7 +400,7 @@ module.exports = async (req, res) => {
 
     // Step 2: Filter events based on context
     console.log('🔧 Step 2: Filtering events based on context...');
-    const filteredEvents = await filterEvents(supabase, context, Math.max(50, limit * 5));
+    const filteredEvents = await filterEvents(supabase, context, Math.max(100, limit * 10));
     console.log(`✅ Found ${filteredEvents.length} filtered events`);
 
     // Step 3: Use AI to refine and explain results
