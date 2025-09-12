@@ -198,87 +198,120 @@ function cosineSimilarity(a, b) {
 }
 
 async function intelligentRanking(openai, prefs, candidates, topK = 10) {
-  console.log('🔧 Starting intelligent ranking...');
+  console.log('🔧 Starting hybrid ranking approach...');
   console.log('🔧 Candidates count:', candidates?.length || 0);
   console.log('🔧 OpenAI available:', !!openai);
   
   if (!openai || !candidates?.length) {
     console.log('⚠️ No OpenAI or candidates, returning first', topK, 'candidates');
-    return candidates.slice(0, topK);
+    return {
+      events: candidates.slice(0, topK),
+      reasoning: null
+    };
   }
 
   try {
-    // Create a detailed context for OpenAI to understand the user's needs
     const userQuery = prefs.keywords || '';
     const userGoals = prefs.goals || [];
     const userIndustries = prefs.industries || [];
     
-    // Prepare event data for OpenAI analysis
-    const eventSummaries = candidates.slice(0, 50).map((event, index) => {
+    // Step 1: Pre-filter events using keyword matching
+    console.log('🔧 Step 1: Pre-filtering events...');
+    const relevantEvents = candidates.filter(event => {
+      const searchText = `${event.event_name} ${event.event_description || ''} ${event.event_tags?.join(' ') || ''}`.toLowerCase();
+      const queryLower = userQuery.toLowerCase();
+      
+      // Look for industry keywords
+      const industryKeywords = userIndustries.flatMap(ind => [ind.toLowerCase(), ind.replace(' ', '').toLowerCase()]);
+      const goalKeywords = userGoals.flatMap(goal => [goal.toLowerCase(), goal.replace(' ', '').toLowerCase()]);
+      
+      // Check for direct matches
+      const hasIndustryMatch = industryKeywords.some(keyword => searchText.includes(keyword));
+      const hasGoalMatch = goalKeywords.some(keyword => searchText.includes(keyword));
+      const hasQueryMatch = queryLower.split(' ').some(word => 
+        word.length > 3 && searchText.includes(word)
+      );
+      
+      // Look for networking/investor keywords
+      const networkingKeywords = ['networking', 'investor', 'angel', 'funding', 'pitch', 'demo', 'founder', 'startup', 'vc'];
+      const hasNetworkingMatch = networkingKeywords.some(keyword => searchText.includes(keyword));
+      
+      return hasIndustryMatch || hasGoalMatch || hasQueryMatch || hasNetworkingMatch;
+    });
+    
+    console.log(`🔧 Pre-filtered to ${relevantEvents.length} relevant events`);
+    
+    // Step 2: Use AI to rank the pre-filtered events
+    if (relevantEvents.length === 0) {
+      console.log('⚠️ No relevant events found, returning first few candidates');
+      return {
+        events: candidates.slice(0, topK),
+        reasoning: {
+          overall: "No events matched the search criteria, showing general events",
+          events: []
+        }
+      };
+    }
+    
+    // Take only the most promising events for AI analysis
+    const eventsToAnalyze = relevantEvents.slice(0, 15);
+    
+    const eventSummaries = eventsToAnalyze.map((event, index) => {
       return `${index + 1}. ${event.event_name}
    Date: ${event.event_date || 'TBA'}
    Time: ${event.event_time || 'TBA'}
    Location: ${event.event_location || 'TBA'}
    Host: ${event.hosted_by || 'TBA'}
    Price: ${event.price || 'TBA'}
-   Description: ${event.event_description ? event.event_description.substring(0, 300) + '...' : 'No description'}
+   Description: ${event.event_description ? event.event_description.substring(0, 200) + '...' : 'No description'}
    Tags: ${event.event_tags ? event.event_tags.join(', ') : 'None'}`;
     }).join('\n\n');
 
-    const systemPrompt = `You are an expert event recommendation assistant for SF Tech Week. Your job is to analyze a user's query and find the most relevant events from a list.
+    const systemPrompt = `You are an expert event recommendation assistant. Analyze these events and select the most relevant ones.
 
 User Query: "${userQuery}"
 User Goals: ${userGoals.join(', ')}
 User Industries: ${userIndustries.join(', ')}
 
-Here are the available events:
+Events to analyze:
 ${eventSummaries}
 
-Please analyze the user's query and select the ${topK} most relevant events. Consider:
-1. Direct keyword matches in event names, descriptions, and tags
-2. Industry relevance (wellness, health tech, AI, etc.)
-3. Networking goals (finding co-founders, investors, etc.)
-4. Event type and format
-5. Location preferences
-6. Time and date relevance
+Focus on:
+1. Industry relevance (fashion tech, wellness, etc.)
+2. Networking goals (angels, co-founders, users)
+3. Event type (networking, pitch, demo, etc.)
+4. Date availability (user available until Oct 9th)
 
-IMPORTANT: For each selected event, provide a brief explanation of why it's relevant to the user's query.
-
-Return a JSON object with this structure:
+Return JSON:
 {
-  "reasoning": "Brief explanation of your overall analysis approach",
+  "reasoning": "Your analysis approach",
   "selected_events": [
     {
       "index": 3,
-      "reason": "Why this event is relevant to the user's query"
-    },
-    {
-      "index": 7,
-      "reason": "Why this event is relevant to the user's query"
+      "reason": "Why this event is perfect for the user"
     }
   ]
 }`;
 
-    console.log('🔧 Sending to OpenAI for intelligent ranking...');
+    console.log('🔧 Sending to OpenAI for focused analysis...');
     const response = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Please rank the most relevant events for: "${userQuery}"` }
+        { role: 'user', content: `Find the best events for: "${userQuery}"` }
       ],
-      temperature: 0.3,
-      max_tokens: 500
+      temperature: 0.1,
+      max_tokens: 600
     });
 
     const responseText = response.choices?.[0]?.message?.content || '';
     console.log('🔧 OpenAI response:', responseText);
 
-    // Parse the structured response
+    // Parse response
     let aiReasoning = null;
     let selectedEvents = [];
     
     try {
-      // Try to parse the JSON response
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
@@ -291,25 +324,27 @@ Return a JSON object with this structure:
           console.log(`  ${idx + 1}. Event ${event.index}: ${event.reason}`);
         });
       } else {
-        // Fallback: look for numbers in the response
-        const numbers = responseText.match(/\d+/g);
-        if (numbers) {
-          selectedEvents = numbers.slice(0, topK).map(n => ({ index: parseInt(n) }));
-        }
+        // Fallback: return first few events
+        selectedEvents = eventsToAnalyze.slice(0, topK).map((_, idx) => ({ 
+          index: idx + 1, 
+          reason: 'Selected based on keyword matching' 
+        }));
       }
     } catch (parseError) {
       console.error('❌ Error parsing OpenAI response:', parseError);
-      console.log('⚠️ Using fallback ranking');
-      return candidates.slice(0, topK);
+      selectedEvents = eventsToAnalyze.slice(0, topK).map((_, idx) => ({ 
+        index: idx + 1, 
+        reason: 'Selected based on keyword matching' 
+      }));
     }
 
-    // Map indices back to actual events
+    // Map to actual events
     const rankedEvents = selectedEvents
       .map(selection => {
-        const idx = selection.index - 1; // Convert to 0-based
-        if (idx >= 0 && idx < candidates.length) {
+        const idx = selection.index - 1;
+        if (idx >= 0 && idx < eventsToAnalyze.length) {
           return {
-            ...candidates[idx],
+            ...eventsToAnalyze[idx],
             aiReason: selection.reason || 'No reason provided'
           };
         }
@@ -317,20 +352,20 @@ Return a JSON object with this structure:
       })
       .filter(Boolean);
 
-    console.log(`✅ Intelligent ranking complete, returning ${rankedEvents.length} results`);
+    console.log(`✅ Hybrid ranking complete, returning ${rankedEvents.length} results`);
     return {
       events: rankedEvents.slice(0, topK),
       reasoning: {
-        overall: aiReasoning,
+        overall: aiReasoning || "Used keyword pre-filtering + AI ranking",
         events: selectedEvents.map(selection => ({
-          name: candidates[selection.index - 1]?.event_name || 'Unknown',
+          name: eventsToAnalyze[selection.index - 1]?.event_name || 'Unknown',
           reason: selection.reason || 'No reason provided'
         }))
       }
     };
 
   } catch (error) {
-    console.error('❌ Error in intelligent ranking:', error);
+    console.error('❌ Error in hybrid ranking:', error);
     console.log('⚠️ Returning first', topK, 'candidates without ranking');
     return {
       events: candidates.slice(0, topK),
