@@ -888,7 +888,7 @@
         try {
           const resp = await fetch('/api/recommend-events', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, limit: 50 })
+            body: JSON.stringify({ message, limit: 100 })
           });
           const data = await resp.json();
           if (!data.ok) throw new Error(data.error || 'Failed');
@@ -1092,13 +1092,49 @@
         `).join('');
       }
       
-      function clearFilters() {
+      async function clearFilters() {
         dayFilter.value = '';
         locationFilter.value = '';
         topicFilter.value = '';
         sortSelect.value = 'relevance';
-        filteredEvents = [...allEvents];
-        renderEvents();
+        
+        // Fetch all events from database
+        try {
+          status.innerHTML = '<div class="loading"></div> Loading all events...';
+          const resp = await fetch('/api/get-events?limit=1000');
+          const data = await resp.json();
+          if (data.ok && data.events) {
+            allEvents = data.events.map(event => ({
+              id: event.id,
+              name: event.event_name,
+              description: event.event_description,
+              date: event.event_date,
+              time: event.event_time,
+              location: event.event_location,
+              host: event.hosted_by,
+              price: event.price,
+              url: event.event_url,
+              tags: event.event_tags,
+              women_specific: event.women_specific,
+              invite_only: event.invite_only
+            }));
+            filteredEvents = [...allEvents];
+            populateFilters(allEvents);
+            renderEvents();
+            status.textContent = '';
+          } else {
+            // Fallback to current filtered events
+            filteredEvents = [...allEvents];
+            renderEvents();
+            status.textContent = '';
+          }
+        } catch (error) {
+          console.error('Error fetching all events:', error);
+          // Fallback to current filtered events
+          filteredEvents = [...allEvents];
+          renderEvents();
+          status.textContent = '';
+        }
       }
       
       function renderAIReasoning() {

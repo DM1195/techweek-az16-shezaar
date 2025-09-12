@@ -180,7 +180,7 @@ async function filterEvents(supabase, context, limit = 100) {
   }
 }
 
-async function refineEventsWithAI(openai, userMessage, context, events, limit = 10) {
+async function refineEventsWithAI(openai, userMessage, context, events, limit = 50) {
   if (!openai || !events || events.length === 0) {
     console.log('⚠️ No OpenAI or events, returning first few events');
     return {
@@ -193,7 +193,7 @@ async function refineEventsWithAI(openai, userMessage, context, events, limit = 
     console.log('🔧 Refining events with AI...');
     
     // Prepare event summaries for AI analysis
-    const eventSummaries = events.slice(0, 20).map((event, index) => {
+    const eventSummaries = events.slice(0, Math.min(50, events.length)).map((event, index) => {
       return `${index + 1}. ${event.event_name}
    Date: ${event.event_date || 'TBA'}
    Time: ${event.event_time || 'TBA'}
