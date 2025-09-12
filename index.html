@@ -136,6 +136,11 @@
         flex-wrap: wrap;
       }
       
+      .row button {
+        flex: 1;
+        min-width: 150px;
+      }
+      
       button { 
         background: #daded8;
         color: #2c3424; 
@@ -456,7 +461,7 @@
         .card { padding: 24px; }
         h1 { font-size: 24px; }
         .row { flex-direction: column; align-items: stretch; }
-        button { width: 100%; }
+        .row button { width: 100%; flex: none; }
         .logo-img { height: 32px; }
         .logo-text { font-size: 20px; }
         .footer { margin-top: 40px; }
@@ -497,7 +502,8 @@
         <p class="subtitle">Tell us about your goals and we'll recommend the most relevant events for you. Whether you're looking for investors, co-founders, talent, or just want to network with like-minded people.</p>
         <textarea id="input" placeholder="I am building a wellness tech platform. I want to attend events to meet angels and other co-founders. No preference for time or days."></textarea>
         <div class="row">
-          <button id="go">🔍 Find Events</button>
+          <button id="go">Find Events</button>
+          <button id="outfit-btn">Find the Perfect Outfit</button>
           <span id="status" class="status"></span>
         </div>
       </div>
@@ -566,6 +572,7 @@
     <script>
       const $ = (id) => document.getElementById(id);
       const btn = $('go');
+      const outfitBtn = $('outfit-btn');
       const input = $('input');
       const status = $('status');
       const out = $('out');
@@ -583,9 +590,32 @@
       let filteredEvents = [];
       let aiReasoning = null;
 
+      // Function to log user interactions to Supabase
+      async function logInteraction(type, data) {
+        try {
+          await fetch('/api/log-interaction', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: type, // 'query', 'find_events', 'find_outfit'
+              data: data,
+              timestamp: new Date().toISOString(),
+              userAgent: navigator.userAgent
+            })
+          });
+        } catch (error) {
+          console.error('Failed to log interaction:', error);
+        }
+      }
+
       async function recommend() {
         const message = input.value.trim();
         if (!message) return;
+        
+        // Log the query and button click
+        await logInteraction('query', { message });
+        await logInteraction('find_events', { message });
+        
         btn.disabled = true; status.innerHTML = '<div class="loading"></div> Finding the best events for you...';
         out.hidden = true; eventsEl.innerHTML = ''; filtersEl.hidden = true;
         try {
@@ -624,6 +654,50 @@
           status.innerHTML = `<div class="error">Error: ${e.message}</div>`;
         } finally {
           btn.disabled = false; 
+          if (!status.innerHTML.includes('error')) {
+            status.textContent = '';
+          }
+        }
+      }
+
+      async function recommendOutfit() {
+        const message = input.value.trim();
+        if (!message) return;
+        
+        // Log the query and outfit button click
+        await logInteraction('query', { message });
+        await logInteraction('find_outfit', { message });
+        
+        outfitBtn.disabled = true; 
+        status.innerHTML = '<div class="loading"></div> Finding the perfect outfit for you...';
+        out.hidden = true; 
+        eventsEl.innerHTML = ''; 
+        filtersEl.hidden = true;
+        
+        try {
+          const resp = await fetch('/api/recommend-outfit', {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message })
+          });
+          const data = await resp.json();
+          if (!data.ok) throw new Error(data.error || 'Failed');
+          
+          // Display outfit recommendations
+          eventsEl.innerHTML = `
+            <div class="event">
+              <div class="event-title">Outfit Recommendation</div>
+              <div class="event-description">${data.recommendation || 'No outfit recommendation available.'}</div>
+              ${data.reasoning ? `<div class="event-reason"><strong>Why this outfit:</strong> ${data.reasoning}</div>` : ''}
+            </div>
+          `;
+          
+          out.hidden = false;
+        } catch (e) {
+          console.error('Error:', e);
+          status.innerHTML = `<div class="error">Error: ${e.message}</div>`;
+        } finally {
+          outfitBtn.disabled = false; 
           if (!status.innerHTML.includes('error')) {
             status.textContent = '';
           }
@@ -745,6 +819,7 @@
       }
 
       btn.addEventListener('click', recommend);
+      outfitBtn.addEventListener('click', recommendOutfit);
       input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) recommend(); });
       
       // Filter and sort event listeners
