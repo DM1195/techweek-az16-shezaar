@@ -54,7 +54,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { message } = req.body;
+    const { message, gender } = req.body;
     
     if (!message) {
       return res.status(400).json({ ok: false, error: 'Message is required' });
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
     
     if (recommendedEvents.length === 0) {
       // Fallback if no events found
-      const fallbackRecommendation = generateFallbackOutfitRecommendation(message);
+      const fallbackRecommendation = generateFallbackOutfitRecommendation(message, gender);
       return res.status(200).json({ 
         ok: true, 
         recommendation: fallbackRecommendation,
@@ -79,7 +79,7 @@ export default async function handler(req, res) {
     
     if (eventCategories.length === 0) {
       // Fallback if no categories found
-      const fallbackRecommendation = generateFallbackOutfitRecommendation(message);
+      const fallbackRecommendation = generateFallbackOutfitRecommendation(message, gender);
       return res.status(200).json({ 
         ok: true, 
         recommendation: fallbackRecommendation,
@@ -111,7 +111,7 @@ export default async function handler(req, res) {
     }
 
     // Fallback if no outfit recommendations found in database
-    const fallbackRecommendation = generateFallbackOutfitRecommendation(message);
+    const fallbackRecommendation = generateFallbackOutfitRecommendation(message, gender);
     return res.status(200).json({ 
       ok: true, 
       recommendation: fallbackRecommendation,
@@ -123,7 +123,7 @@ export default async function handler(req, res) {
     console.error('Error generating outfit recommendation:', error);
     
     // Fallback recommendation
-    const fallbackRecommendation = generateFallbackOutfitRecommendation(req.body.message || '');
+    const fallbackRecommendation = generateFallbackOutfitRecommendation(req.body.message || '', req.body.gender);
     
     res.status(200).json({ 
       ok: true, 
@@ -134,16 +134,45 @@ export default async function handler(req, res) {
   }
 }
 
-function generateFallbackOutfitRecommendation(message) {
+function generateFallbackOutfitRecommendation(message, gender) {
   const lowerMessage = message.toLowerCase();
   
+  // Gender-specific recommendations
+  const isFemale = gender === 'female';
+  const isMale = gender === 'male';
+  const preferNotToSay = gender === 'prefer-not-to-say';
+  
   if (lowerMessage.includes('investor') || lowerMessage.includes('angel') || lowerMessage.includes('funding')) {
-    return "For investor meetings: Dark navy or charcoal suit with a crisp white or light blue dress shirt, leather dress shoes, and a professional watch. Consider a blazer with dress pants for a slightly more relaxed but still professional look.";
+    if (isFemale) {
+      return "For investor meetings: A tailored blazer with dress pants or a professional dress, paired with closed-toe heels or professional flats. Consider a crisp white or light blue blouse, minimal jewelry, and a professional handbag. A structured blazer dress is also a great option for a polished look.";
+    } else if (isMale) {
+      return "For investor meetings: Dark navy or charcoal suit with a crisp white or light blue dress shirt, leather dress shoes, and a professional watch. Consider a blazer with dress pants for a slightly more relaxed but still professional look.";
+    } else {
+      return "For investor meetings: Professional business attire - a well-fitted suit or equivalent professional ensemble. Choose neutral colors like navy, charcoal, or black. Ensure clothing is clean, pressed, and fits well. Professional shoes and minimal accessories complete the look.";
+    }
   } else if (lowerMessage.includes('co-founder') || lowerMessage.includes('startup') || lowerMessage.includes('pitch')) {
-    return "For startup networking: Smart casual with dark jeans or chinos, a well-fitted button-down shirt or polo, clean sneakers or loafers, and a blazer. This strikes the right balance between professional and approachable.";
+    if (isFemale) {
+      return "For startup networking: Smart casual with dark jeans or well-fitted pants, a stylish blouse or button-down shirt, comfortable flats or low heels, and a chic blazer or cardigan. Consider a structured tote bag and minimal, elegant jewelry.";
+    } else if (isMale) {
+      return "For startup networking: Smart casual with dark jeans or chinos, a well-fitted button-down shirt or polo, clean sneakers or loafers, and a blazer. This strikes the right balance between professional and approachable.";
+    } else {
+      return "For startup networking: Smart casual attire that balances professionalism with approachability. Choose well-fitted, comfortable pieces in neutral colors. A blazer or cardigan can elevate the look while maintaining a friendly, accessible vibe.";
+    }
   } else if (lowerMessage.includes('wellness') || lowerMessage.includes('health') || lowerMessage.includes('fitness')) {
-    return "For wellness tech events: Business casual with comfortable yet professional pieces - dark jeans or chinos, a collared shirt or nice sweater, and clean sneakers or casual dress shoes. Consider athleisure-inspired pieces that reflect the wellness industry.";
+    if (isFemale) {
+      return "For wellness tech events: Business casual with comfortable yet professional pieces - dark jeans or tailored pants, a stylish sweater or blouse, comfortable flats or low boots, and a light cardigan or blazer. Consider athleisure-inspired pieces like a structured jogger or ponte pants.";
+    } else if (isMale) {
+      return "For wellness tech events: Business casual with comfortable yet professional pieces - dark jeans or chinos, a collared shirt or nice sweater, and clean sneakers or casual dress shoes. Consider athleisure-inspired pieces that reflect the wellness industry.";
+    } else {
+      return "For wellness tech events: Business casual with comfortable yet professional pieces that reflect the wellness industry. Choose breathable fabrics and comfortable footwear. Consider athleisure-inspired pieces that maintain a professional appearance.";
+    }
   } else {
-    return "For general SF Tech Week events: Smart casual attire works best - dark jeans or chinos, a button-down shirt or nice polo, clean sneakers or loafers, and a light jacket or blazer. This versatile look works for most tech events while keeping you comfortable.";
+    if (isFemale) {
+      return "For general SF Tech Week events: Smart casual attire works best - dark jeans or well-fitted pants, a stylish blouse or button-down shirt, comfortable flats or low heels, and a light jacket or blazer. This versatile look works for most tech events while keeping you comfortable and professional.";
+    } else if (isMale) {
+      return "For general SF Tech Week events: Smart casual attire works best - dark jeans or chinos, a button-down shirt or nice polo, clean sneakers or loafers, and a light jacket or blazer. This versatile look works for most tech events while keeping you comfortable.";
+    } else {
+      return "For general SF Tech Week events: Smart casual attire works best - well-fitted pants or jeans, a comfortable shirt or blouse, appropriate footwear, and a light jacket or cardigan. This versatile look works for most tech events while keeping you comfortable and professional.";
+    }
   }
 }

@@ -667,6 +667,120 @@
         transform: none;
         box-shadow: none;
       }
+      
+      /* Gender Selection Styles */
+      .gender-selection {
+        text-align: center;
+        padding: 20px 0;
+      }
+      
+      .gender-selection h4 {
+        margin: 0 0 24px 0;
+        color: #daded8;
+        font-size: 18px;
+        font-weight: 600;
+      }
+      
+      .gender-options {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      
+      .gender-btn {
+        background: transparent;
+        color: #daded8;
+        border: 2px solid rgba(218, 222, 216, 0.3);
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        min-width: 140px;
+      }
+      
+      .gender-btn:hover {
+        background: rgba(218, 222, 216, 0.1);
+        border-color: #daded8;
+        transform: translateY(-2px);
+      }
+      
+      .gender-btn.selected {
+        background: #daded8;
+        color: #2c3424;
+        border-color: #daded8;
+      }
+      
+      /* Products Display Styles */
+      .products-content {
+        background: rgba(44, 52, 36, 0.6);
+        border: 1px solid rgba(218, 222, 216, 0.2);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+      
+      .products-content h4 {
+        margin: 0 0 16px 0;
+        color: #daded8;
+        font-size: 18px;
+      }
+      
+      .products-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+        margin-top: 16px;
+      }
+      
+      .product-item {
+        background: rgba(76, 88, 62, 0.3);
+        border: 1px solid rgba(218, 222, 216, 0.2);
+        border-radius: 8px;
+        padding: 16px;
+        text-align: center;
+        transition: all 0.3s ease;
+      }
+      
+      .product-item:hover {
+        background: rgba(76, 88, 62, 0.5);
+        transform: translateY(-2px);
+      }
+      
+      .product-name {
+        font-weight: 600;
+        color: #daded8;
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+      
+      .product-price {
+        color: rgba(218, 222, 216, 0.8);
+        font-size: 13px;
+        margin-bottom: 8px;
+      }
+      
+      .product-link {
+        color: #daded8;
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 500;
+        border-bottom: 1px solid transparent;
+        transition: all 0.3s ease;
+      }
+      
+      .product-link:hover {
+        border-bottom-color: #daded8;
+      }
+      
+      .no-products {
+        text-align: center;
+        color: rgba(218, 222, 216, 0.8);
+        font-style: italic;
+        padding: 20px;
+      }
 
       @media (max-width: 768px) {
         .wrap { padding: 20px 16px; }
@@ -800,24 +914,42 @@
       
       <!-- Floating Outfit Button -->
       <button id="outfit-btn" class="floating-outfit-btn" hidden>
-        Find the Perfect Outfit
+        Get Outfit Ideas
       </button>
       
       <!-- Outfit Recommendation Modal -->
       <div id="outfit-modal" class="modal-overlay">
         <div class="modal-content">
           <div class="modal-header">
-            <h3 class="modal-title">Outfit Recommendation</h3>
+            <h3 class="modal-title">Get Outfit Ideas</h3>
             <button class="modal-close" id="modal-close">&times;</button>
           </div>
           
-          <div id="outfit-content">
+          <!-- Gender Selection Step -->
+          <div id="gender-selection" class="gender-selection">
+            <h4>Select your gender to get personalized outfit recommendations:</h4>
+            <div class="gender-options">
+              <button class="gender-btn" data-gender="female">Female</button>
+              <button class="gender-btn" data-gender="male">Male</button>
+              <button class="gender-btn" data-gender="prefer-not-to-say">Prefer not to say</button>
+            </div>
+          </div>
+          
+          <!-- Outfit Recommendations Content -->
+          <div id="outfit-content" class="outfit-content" style="display: none;">
             <!-- Outfit recommendation content will be inserted here -->
+          </div>
+          
+          <!-- Products Display -->
+          <div id="products-content" class="products-content" style="display: none;">
+            <h4>Shop For Products</h4>
+            <div id="products-list"></div>
           </div>
           
           <div class="modal-actions">
             <button class="modal-btn secondary" id="modal-close-btn">Close</button>
-            <button class="modal-btn" id="get-another-outfit">Get Another Recommendation</button>
+            <button class="modal-btn" id="get-another-outfit" style="display: none;">Get Another Recommendation</button>
+            <button class="modal-btn" id="shop-products-btn" style="display: none;">Shop For Products</button>
           </div>
         </div>
       </div>
@@ -844,10 +976,14 @@
       const aiReasoningEl = $('ai-reasoning');
       const reasoningContentEl = $('reasoning-content');
       const outfitModal = $('outfit-modal');
+      const genderSelection = $('gender-selection');
       const outfitContent = $('outfit-content');
+      const productsContent = $('products-content');
+      const productsList = $('products-list');
       const modalClose = $('modal-close');
       const modalCloseBtn = $('modal-close-btn');
       const getAnotherOutfitBtn = $('get-another-outfit');
+      const shopProductsBtn = $('shop-products-btn');
       
       // Hide floating button initially
       outfitBtn.hidden = true;
@@ -937,6 +1073,27 @@
         await logInteraction('query', { message });
         await logInteraction('find_outfit', { message });
         
+        // Show modal with gender selection
+        showGenderSelection();
+      }
+      
+      function showGenderSelection() {
+        // Reset modal state
+        genderSelection.style.display = 'block';
+        outfitContent.style.display = 'none';
+        productsContent.style.display = 'none';
+        getAnotherOutfitBtn.style.display = 'none';
+        shopProductsBtn.style.display = 'none';
+        
+        // Show modal
+        outfitModal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+      }
+      
+      async function getOutfitRecommendations(gender) {
+        const message = input.value.trim();
+        if (!message) return;
+        
         outfitBtn.disabled = true; 
         status.innerHTML = '<div class="loading"></div> Finding the perfect outfit for you...';
         
@@ -944,13 +1101,13 @@
           const resp = await fetch('/api/recommend-outfit', {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message })
+            body: JSON.stringify({ message, gender })
           });
           const data = await resp.json();
           if (!data.ok) throw new Error(data.error || 'Failed');
           
           // Display outfit recommendations in modal
-          showOutfitModal(data);
+          showOutfitRecommendations(data);
           
         } catch (e) {
           console.error('Error:', e);
@@ -963,9 +1120,15 @@
         }
       }
       
-      function showOutfitModal(data) {
+      function showOutfitRecommendations(data) {
         const eventCategories = data.eventCategories || [];
         const outfitRecommendations = data.outfitRecommendations || [];
+        
+        // Hide gender selection and show outfit content
+        genderSelection.style.display = 'none';
+        outfitContent.style.display = 'block';
+        getAnotherOutfitBtn.style.display = 'inline-block';
+        shopProductsBtn.style.display = 'inline-block';
         
         // If we have specific outfit recommendations from database, show them by category
         if (outfitRecommendations.length > 0) {
@@ -1002,10 +1165,54 @@
             </div>
           `;
         }
-        
-        // Show modal
-        outfitModal.classList.add('show');
-        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+      }
+      
+      async function showProducts() {
+        try {
+          status.innerHTML = '<div class="loading"></div> Loading products...';
+          
+          const resp = await fetch('/api/get-products', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          const data = await resp.json();
+          
+          if (data.ok && data.products && data.products.length > 0) {
+            productsList.innerHTML = `
+              <div class="products-grid">
+                ${data.products.map(product => `
+                  <div class="product-item">
+                    <div class="product-name">${product.product_name || 'Product Name'}</div>
+                    <div class="product-price">${product.price || 'Price TBA'}</div>
+                    ${product.product_url ? `<a href="${product.product_url}" target="_blank" class="product-link">View Product</a>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            `;
+          } else {
+            productsList.innerHTML = `
+              <div class="no-products">
+                No products available at the moment. Check back soon!
+              </div>
+            `;
+          }
+          
+          // Show products content
+          outfitContent.style.display = 'none';
+          productsContent.style.display = 'block';
+          shopProductsBtn.style.display = 'none';
+          
+        } catch (e) {
+          console.error('Error loading products:', e);
+          productsList.innerHTML = `
+            <div class="no-products">
+              Error loading products. Please try again later.
+            </div>
+          `;
+        } finally {
+          status.textContent = '';
+        }
       }
       
       function hideOutfitModal() {
@@ -1167,6 +1374,18 @@
       outfitBtn.addEventListener('click', recommendOutfit);
       input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) recommend(); });
       
+      // Gender selection event listeners
+      document.querySelectorAll('.gender-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          // Remove selected class from all buttons
+          document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('selected'));
+          // Add selected class to clicked button
+          e.target.classList.add('selected');
+          // Get outfit recommendations with selected gender
+          getOutfitRecommendations(e.target.dataset.gender);
+        });
+      });
+      
       // Modal event listeners
       modalClose.addEventListener('click', hideOutfitModal);
       modalCloseBtn.addEventListener('click', hideOutfitModal);
@@ -1174,6 +1393,7 @@
         hideOutfitModal();
         recommendOutfit();
       });
+      shopProductsBtn.addEventListener('click', showProducts);
       
       // Close modal when clicking outside
       outfitModal.addEventListener('click', (e) => {
