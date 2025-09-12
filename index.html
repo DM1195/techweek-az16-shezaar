@@ -727,7 +727,7 @@
       }
       
       function renderAIReasoning() {
-        if (!aiReasoning) {
+        if (!aiReasoning || !aiReasoning.overall) {
           aiReasoningEl.hidden = true;
           return;
         }
@@ -736,7 +736,7 @@
           <div class="reasoning-content">
             <strong>Overall Analysis:</strong> ${aiReasoning.overall || 'No overall reasoning provided'}<br><br>
             <strong>Event-Specific Reasoning:</strong>
-            ${aiReasoning.events ? aiReasoning.events.map(event => 
+            ${aiReasoning.events && aiReasoning.events.length > 0 ? aiReasoning.events.map(event => 
               `<div class="event-reason"><strong>${event.name}:</strong> ${event.reason}</div>`
             ).join('') : 'No event-specific reasoning provided'}
           </div>

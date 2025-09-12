@@ -318,12 +318,24 @@ Return a JSON object with this structure:
       .filter(Boolean);
 
     console.log(`✅ Intelligent ranking complete, returning ${rankedEvents.length} results`);
-    return rankedEvents.slice(0, topK);
+    return {
+      events: rankedEvents.slice(0, topK),
+      reasoning: {
+        overall: aiReasoning,
+        events: selectedEvents.map(selection => ({
+          name: candidates[selection.index - 1]?.event_name || 'Unknown',
+          reason: selection.reason || 'No reason provided'
+        }))
+      }
+    };
 
   } catch (error) {
     console.error('❌ Error in intelligent ranking:', error);
     console.log('⚠️ Returning first', topK, 'candidates without ranking');
-    return candidates.slice(0, topK);
+    return {
+      events: candidates.slice(0, topK),
+      reasoning: null
+    };
   }
 }
 
@@ -401,14 +413,21 @@ module.exports = async (req, res) => {
     // 3) Use intelligent ranking with OpenAI
     console.log('🔧 Step 3: Intelligent ranking with OpenAI...');
     let ranked;
+    let aiReasoning = null;
     try {
-      ranked = await intelligentRanking(openai, prefs, candidates, limit);
+      const rankingResult = await intelligentRanking(openai, prefs, candidates, limit);
+      ranked = rankingResult.events;
+      aiReasoning = rankingResult.reasoning;
       console.log(`✅ Intelligently ranked to ${ranked.length} events`);
+      if (aiReasoning) {
+        console.log('🧠 AI Reasoning captured:', aiReasoning.overall);
+      }
     } catch (rankError) {
       console.error('❌ Error in intelligent ranking, using simple fallback:', rankError);
       console.log('⚠️ Using simple fallback ranking');
       // Simple fallback: just return the first N candidates
       ranked = candidates.slice(0, limit);
+      aiReasoning = null;
       console.log(`✅ Fallback: returning first ${ranked.length} events`);
     }
 
@@ -445,12 +464,19 @@ module.exports = async (req, res) => {
         prefs, 
         results: [], 
         count: 0,
+        aiReasoning: aiReasoning,
         message: 'No events found matching your criteria. Try broadening your search terms or check back later for new events.'
       });
     }
 
     console.log('✅ Success! Returning results');
-    return res.status(200).json({ ok: true, prefs, results, count: results.length });
+    return res.status(200).json({ 
+      ok: true, 
+      prefs, 
+      results, 
+      count: results.length,
+      aiReasoning: aiReasoning
+    });
   } catch (err) {
     console.error('❌ Error in recommend-events:', err);
     console.error('❌ Error stack:', err.stack);
