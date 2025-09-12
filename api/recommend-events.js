@@ -191,7 +191,7 @@ async function filterEvents(supabase, context, limit = 100) {
     
     let query = supabase
       .from(TABLE)
-      .select('id,event_name,event_date,event_time,event_location,event_description,hosted_by,price,event_url,event_tags,usage_tags,industry_tags,women_specific,invite_only,event_name_and_link,updated_at')
+      .select('id,event_name,event_date,event_time,event_location,event_description,hosted_by,price,event_url,event_tags,usage_tags,industry_tags,women_specific,invite_only,event_name_and_link,event_category,updated_at')
       .order('updated_at', { ascending: false })
       .limit(limit);
 
@@ -231,7 +231,7 @@ async function filterEvents(supabase, context, limit = 100) {
     // If we have fewer than 20 results after usage filtering, don't filter by industry
     if (context.industries && context.industries.length > 0 && filteredEvents.length > 20) {
       const beforeFilter = filteredEvents.length;
-      filteredEvents = filteredEvents.filter(event => {
+      const industryFilteredEvents = filteredEvents.filter(event => {
         const eventIndustryTags = event.industry_tags || [];
         const eventTags = event.event_tags || [];
         const allTags = [...eventIndustryTags, ...eventTags];
@@ -243,7 +243,14 @@ async function filterEvents(supabase, context, limit = 100) {
           )
         );
       });
-      console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on industries (loose filtering)`);
+      
+      // Only apply industry filtering if we still have results after filtering
+      if (industryFilteredEvents.length > 0) {
+        filteredEvents = industryFilteredEvents;
+        console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on industries (loose filtering)`);
+      } else {
+        console.log(`⚠️ Industry filtering would remove all events, skipping industry filter. Keeping ${filteredEvents.length} events.`);
+      }
     } else if (context.industries && context.industries.length > 0) {
       console.log(`✅ Skipping industry filtering - only ${filteredEvents.length} events after usage filtering`);
     }
@@ -508,7 +515,7 @@ module.exports = async (req, res) => {
       tags: e.event_tags,
       women_specific: e.women_specific,
       invite_only: e.invite_only,
-      event_category: generateEventCategory(e.event_name, e.event_description, e.event_tags),
+      event_category: e.event_category || generateEventCategory(e.event_name, e.event_description, e.event_tags),
       aiExplanation: e.aiExplanation || 'Selected based on relevance to your query'
     }));
     console.log(`✅ Shaped ${results.length} results`);

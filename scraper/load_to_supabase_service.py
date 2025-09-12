@@ -67,6 +67,81 @@ def clean_time_field(time_str: str) -> str:
         return None  # Return None for empty time fields
     return str(time_str).strip()
 
+def generate_event_category(event_name: str, event_description: str, event_tags: List[str]) -> str:
+    """Generate event category based on event name, description, and tags."""
+    # Convert all text to lowercase for case-insensitive matching
+    name = (event_name or '').lower()
+    description = (event_description or '').lower()
+    tags = [tag.lower() for tag in event_tags] if event_tags else []
+    all_text = f"{name} {description} {' '.join(tags)}"
+    
+    # Business Casual - Networking Mixers, Happy Hours, Co-founder Matchups, Pitch Nights, Demo Days, Investor Panels, Startup Showcases
+    business_casual_keywords = [
+        'networking', 'mixer', 'happy hour', 'co-founder', 'cofounder', 'co founder',
+        'founder', 'entrepreneur', 'startup', 'business', 'professional', 'meetup',
+        'connect', 'collaboration', 'partnership', 'matchup', 'venture', 'funding',
+        'angel', 'vc', 'investment', 'capital', 'investor', 'tech', 'ai', 'fintech',
+        'wellness', 'health', 'sustainability', 'blockchain', 'web3', 'crypto',
+        'pitch night', 'demo day', 'investor panel', 'startup showcase', 'presentation',
+        'pitch', 'showcase', 'demo', 'equity round', 'series round', 'seed round'
+    ]
+    
+    # Casual Creative - Community Events, Creative Collabs, Founder Therapy, Coffee Walks, AI Bootcamps, Coding Nights, Founder Work Sessions
+    casual_creative_keywords = [
+        'community', 'creative', 'collab', 'therapy', 'coffee walk', 'ai bootcamp',
+        'coding night', 'work session', 'workshop', 'learning', 'education', 'skill',
+        'development', 'creative', 'art', 'design', 'innovation', 'brainstorm',
+        'ideation', 'hackathon', 'build', 'create', 'collaborative'
+    ]
+    
+    # Activity - Pickleball, Hiking, Morning Yoga, Run Clubs
+    activity_keywords = [
+        'pickleball', 'hiking', 'yoga', 'run club', 'running', 'fitness', 'exercise',
+        'sport', 'physical', 'outdoor', 'walk', 'jog', 'workout', 'gym', 'tennis',
+        'basketball', 'soccer', 'volleyball', 'cycling', 'bike', 'swimming'
+    ]
+    
+    # Daytime Social - Brunches, Founder Lunches, Garden Parties
+    daytime_social_keywords = [
+        'brunch', 'lunch', 'garden party', 'daytime', 'morning', 'afternoon',
+        'breakfast', 'dining', 'food', 'meal', 'social', 'gathering', 'party',
+        'celebration', 'festival', 'fair', 'market', 'outdoor dining'
+    ]
+    
+    # Evening Social - Dinners, House Parties, Rooftop Hangouts, After Parties
+    evening_social_keywords = [
+        'dinner', 'house party', 'rooftop', 'after party', 'evening', 'night',
+        'party', 'social', 'hangout', 'get together', 'celebration', 'drinks',
+        'cocktail', 'wine', 'beer', 'socializing', 'nightlife', 'club', 'bar'
+    ]
+    
+    # Check for matches in order of specificity
+    def check_keywords(keywords):
+        return any(keyword in all_text or keyword in name or keyword in description or 
+                  any(keyword in tag for tag in tags) for keyword in keywords)
+    
+    # Return category based on keyword matches
+    if check_keywords(business_casual_keywords):
+        return 'Business Casual'
+    elif check_keywords(casual_creative_keywords):
+        return 'Casual Creative'
+    elif check_keywords(activity_keywords):
+        return 'Activity'
+    elif check_keywords(daytime_social_keywords):
+        return 'Daytime Social'
+    elif check_keywords(evening_social_keywords):
+        return 'Evening Social'
+    else:
+        # Default fallback based on common patterns
+        if any(word in all_text for word in ['networking', 'meet', 'connect']):
+            return 'Business Casual'
+        elif any(word in all_text for word in ['party', 'social', 'hangout']):
+            return 'Evening Social'
+        elif any(word in all_text for word in ['workshop', 'learn', 'education']):
+            return 'Casual Creative'
+        else:
+            return 'Business Casual'  # Default fallback
+
 def load_events_from_csv(csv_path: str) -> List[Dict[str, Any]]:
     """Load events from CSV file with proper parsing."""
     events = []
@@ -79,21 +154,26 @@ def load_events_from_csv(csv_path: str) -> List[Dict[str, Any]]:
         for row_num, row in enumerate(reader, 1):
             try:
                 # Parse the event data
+                event_name = clean_text(row.get('event_name', ''))
+                event_description = clean_text(row.get('event_description', ''))
+                event_tags = parse_tags(row.get('event_tags', ''))
+                
                 event = {
-                    'event_name': clean_text(row.get('event_name', '')),
+                    'event_name': event_name,
                     'event_date': clean_text(row.get('event_date', '')),
                     'event_time': clean_time_field(row.get('event_time', '')),
                     'event_location': clean_text(row.get('event_location', '')),
-                    'event_description': clean_text(row.get('event_description', '')),
+                    'event_description': event_description,
                     'hosted_by': clean_text(row.get('hosted_by', '')),
                     'price': clean_text(row.get('price', '')),
                     'event_url': clean_text(row.get('event_url', '')),
-                    'event_tags': parse_tags(row.get('event_tags', '')),
+                    'event_tags': event_tags,
                     'usage_tags': parse_tags(row.get('usage_tags', '')),
                     'industry_tags': parse_tags(row.get('industry_tags', '')),
                     'women_specific': parse_boolean(row.get('women_specific', '')),
                     'invite_only': parse_boolean(row.get('invite_only', '')),
-                    'event_name_and_link': clean_text(row.get('event_name_and_link', ''))
+                    'event_name_and_link': clean_text(row.get('event_name_and_link', '')),
+                    'event_category': generate_event_category(event_name, event_description, event_tags)
                 }
                 
                 # Skip events with empty names
@@ -168,6 +248,7 @@ def verify_upload(supabase: Client, sample_size: int = 5) -> None:
                 print(f"   Date: {event.get('event_date', 'N/A')}")
                 print(f"   Time: {event.get('event_time', 'N/A')}")
                 print(f"   Location: {event.get('event_location', 'N/A')}")
+                print(f"   Category: {event.get('event_category', 'N/A')}")
                 print(f"   Event Tags: {event.get('event_tags', [])}")
                 print(f"   Usage Tags: {event.get('usage_tags', [])}")
                 print(f"   Industry Tags: {event.get('industry_tags', [])}")
@@ -218,6 +299,19 @@ def main():
         
         # Verify upload
         verify_upload(supabase)
+        
+        # Show event category distribution
+        print(f"\n📊 Event Category Distribution:")
+        try:
+            response = supabase.table('Event List').select('event_category').execute()
+            if response.data:
+                from collections import Counter
+                categories = [event.get('event_category', 'Unknown') for event in response.data]
+                category_counts = Counter(categories)
+                for category, count in category_counts.most_common():
+                    print(f"   {category}: {count} events")
+        except Exception as e:
+            print(f"   Could not fetch category distribution: {e}")
         
     except Exception as e:
         print(f"❌ Error: {e}")
