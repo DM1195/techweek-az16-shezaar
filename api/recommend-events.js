@@ -149,29 +149,25 @@ async function fetchCandidateEvents(supabase, prefs, limit = 200) {
 
     // If we have search terms, use them to filter events
     if (searchTerms.length > 0) {
-      // Clean search terms and create individual search conditions
-      const cleanTerms = searchTerms
+      // Clean and deduplicate search terms, then join them
+      const cleanTerms = [...new Set(searchTerms
         .filter(term => term && term.trim())
         .map(term => term.trim())
-        .slice(0, 5); // Limit to 5 terms to avoid query complexity
+        .filter(term => term.length > 1))]; // Remove single character terms
       
       if (cleanTerms.length > 0) {
-        // Create OR conditions for each search term
-        const orConditions = [];
-        for (const term of cleanTerms) {
-          // Escape special characters
-          const escapedTerm = term.replace(/[%_\\]/g, '\\$&');
-          orConditions.push(
-            `event_name.ilike.%${escapedTerm}%`,
-            `event_description.ilike.%${escapedTerm}%`,
-            `event_location.ilike.%${escapedTerm}%`,
-            `hosted_by.ilike.%${escapedTerm}%`,
-            `event_tags.ilike.%${escapedTerm}%`
+        // Create a single search string like the working get-events.js approach
+        const searchString = cleanTerms.slice(0, 5).join(' '); // Join terms with spaces
+        const cleaned = sanitizeLikeValue(searchString);
+        
+        if (cleaned) {
+          console.log('Search string:', cleaned);
+          
+          // Use the same pattern as get-events.js but include event_tags
+          query = query.or(
+            `event_name.ilike.%${cleaned}%,event_description.ilike.%${cleaned}%,event_location.ilike.%${cleaned}%,hosted_by.ilike.%${cleaned}%,event_tags.ilike.%${cleaned}%`
           );
         }
-        
-        query = query.or(orConditions.join(','));
-        console.log('Query conditions:', orConditions.join(','));
       }
     }
 
