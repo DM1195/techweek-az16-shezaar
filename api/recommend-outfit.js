@@ -189,7 +189,7 @@ export default async function handler(req, res) {
         
         return {
           event_category: rec.event_category,
-          outfit_recommendation: outfitRecommendation,
+          outfit_recommendation: rec.recommendation || outfitRecommendation, // Use database recommendation if available
           reasoning: `This ${rec.gender} style with ${rec.body_comfort} comfort level is perfect for ${rec.event_category} events.`,
           style_fit: rec.gender,
           body_comfort: rec.body_comfort

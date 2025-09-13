@@ -60,7 +60,7 @@ def _clean_text(text: Optional[str]) -> str:
 
 
 def format_date_to_mmm_dd_yyyy(date_str: str) -> str:
-    """Convert date from 'Fri Oct 10' format to 'Oct-10-2024' format."""
+    """Convert date from 'Fri Oct 10' format to 'Oct-10-2025' format."""
     if not date_str or not date_str.strip():
         return ""
     
@@ -80,7 +80,7 @@ def format_date_to_mmm_dd_yyyy(date_str: str) -> str:
         if month in month_map and day.isdigit():
             # Add leading zero to day if needed
             day_formatted = f"{int(day):02d}"
-            return f"{month_map[month]}-{day_formatted}-2024"
+            return f"{month_map[month]}-{day_formatted}-2025"
     
     return date_str  # Return original if parsing fails
 
