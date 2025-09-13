@@ -504,23 +504,26 @@
       }
       
       .floating-outfit-btn {
-        position: fixed;
-        bottom: 30px;
-        right: 30px;
+        position: fixed !important;
+        bottom: 20px !important;
+        right: 20px !important;
         background: linear-gradient(135deg, #daded8 0%, #c4d0c4 100%);
         color: #2c3424;
         border: none;
-        padding: 16px 28px;
+        padding: 14px 24px;
         border-radius: 50px;
         cursor: pointer;
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 600;
-        box-shadow: 0 12px 35px rgba(218, 222, 216, 0.4), 0 0 0 1px rgba(218, 222, 216, 0.1);
+        box-shadow: 0 8px 25px rgba(218, 222, 216, 0.4), 0 0 0 1px rgba(218, 222, 216, 0.1);
         transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        z-index: 1000;
+        z-index: 1000 !important;
         animation: floatIn 0.5s ease-out;
-        position: relative;
         overflow: hidden;
+        white-space: nowrap;
+        max-width: calc(100vw - 40px);
+        box-sizing: border-box;
+        transform: none !important;
       }
       
       .floating-outfit-btn::before {
@@ -921,10 +924,12 @@
         }
         
         .floating-outfit-btn {
-          bottom: 20px;
-          right: 20px;
-          padding: 14px 20px;
-          font-size: 14px;
+          bottom: 16px !important;
+          right: 16px !important;
+          padding: 12px 18px;
+          font-size: 13px;
+          border-radius: 40px;
+          max-width: calc(100vw - 32px);
         }
         
         .modal-content {
@@ -942,6 +947,30 @@
         
         .modal-btn {
           width: 100%;
+        }
+      }
+      
+      /* Extra small screens */
+      @media (max-width: 480px) {
+        .floating-outfit-btn {
+          bottom: 12px !important;
+          right: 12px !important;
+          padding: 10px 16px;
+          font-size: 12px;
+          border-radius: 35px;
+          max-width: calc(100vw - 24px);
+        }
+      }
+      
+      /* Very small screens */
+      @media (max-width: 360px) {
+        .floating-outfit-btn {
+          bottom: 10px !important;
+          right: 10px !important;
+          padding: 8px 14px;
+          font-size: 11px;
+          border-radius: 30px;
+          max-width: calc(100vw - 20px);
         }
       }
     </style>
@@ -1100,6 +1129,37 @@
       // Hide floating button initially
       outfitBtn.hidden = true;
       
+      // Ensure floating button is always visible and properly positioned
+      function ensureFloatingButtonVisibility() {
+        if (!outfitBtn.hidden) {
+          // Force the button to be visible and positioned correctly
+          outfitBtn.style.position = 'fixed';
+          outfitBtn.style.bottom = '20px';
+          outfitBtn.style.right = '20px';
+          outfitBtn.style.zIndex = '1000';
+          
+          // Adjust for mobile screens
+          if (window.innerWidth <= 768) {
+            outfitBtn.style.bottom = '16px';
+            outfitBtn.style.right = '16px';
+          }
+          if (window.innerWidth <= 480) {
+            outfitBtn.style.bottom = '12px';
+            outfitBtn.style.right = '12px';
+          }
+          if (window.innerWidth <= 360) {
+            outfitBtn.style.bottom = '10px';
+            outfitBtn.style.right = '10px';
+          }
+        }
+      }
+      
+      // Call on window resize
+      window.addEventListener('resize', ensureFloatingButtonVisibility);
+      
+      // Call initially
+      ensureFloatingButtonVisibility();
+      
       let allEvents = [];
       let filteredEvents = [];
       let aiReasoning = null;
@@ -1154,6 +1214,7 @@
             renderAIReasoning();
             // Show floating outfit button
             outfitBtn.hidden = false;
+            ensureFloatingButtonVisibility();
           } else {
             eventsEl.innerHTML = `
               <div class="event">
