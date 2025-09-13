@@ -1,8 +1,8 @@
 const { getSupabaseClient } = require('./_supabase');
 const { getOpenAI } = require('./_openai');
 
-// Get outfit recommendations from Supabase based on event categories
-async function getOutfitRecommendationsFromSupabase(eventCategories) {
+// Get outfit recommendations from Supabase based on event categories and gender
+async function getOutfitRecommendationsFromSupabase(eventCategories, gender) {
   try {
     const supabase = getSupabaseClient();
     if (!supabase) {
@@ -10,11 +10,28 @@ async function getOutfitRecommendationsFromSupabase(eventCategories) {
       return [];
     }
 
-    // Get outfit recommendations for the given event categories
-    const { data, error } = await supabase
+    // Build query for outfit recommendations
+    let query = supabase
       .from('Outfit Recommendations')
       .select('*')
       .in('event_category', eventCategories);
+
+    console.log('Querying outfit recommendations for categories:', eventCategories);
+    
+    // Filter by gender if specified
+    if (gender) {
+      if (gender === 'prefer-not-to-say') {
+        // Show gender-neutral options when user prefers not to say
+        query = query.eq('gender', 'gender-neutral');
+        console.log('Filtering by gender-neutral recommendations');
+      } else {
+        // Show gender-specific options
+        query = query.eq('gender', gender);
+        console.log('Filtering by gender:', gender);
+      }
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching outfit recommendations:', error);
@@ -54,14 +71,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { message, gender } = req.body;
+    const { message, gender, currentEvents } = req.body;
     
     if (!message) {
       return res.status(400).json({ ok: false, error: 'Message is required' });
     }
 
-    // Get recommended events to extract their categories
-    const recommendedEvents = await getRecommendedEvents(message);
+    // Use current events from frontend if provided, otherwise fetch them
+    let recommendedEvents = currentEvents || [];
+    
+    if (recommendedEvents.length === 0) {
+      recommendedEvents = await getRecommendedEvents(message);
+    }
     
     if (recommendedEvents.length === 0) {
       // Fallback if no events found
@@ -88,8 +109,12 @@ export default async function handler(req, res) {
       });
     }
 
-    // Get outfit recommendations from Supabase for these categories
-    const outfitRecommendations = await getOutfitRecommendationsFromSupabase(eventCategories);
+    // Get outfit recommendations from Supabase for these categories and gender
+    const outfitRecommendations = await getOutfitRecommendationsFromSupabase(eventCategories, gender);
+    
+    console.log('Event categories:', eventCategories);
+    console.log('Gender:', gender);
+    console.log('Found outfit recommendations:', outfitRecommendations.length);
     
     if (outfitRecommendations.length > 0) {
       // Combine all recommendations for the categories

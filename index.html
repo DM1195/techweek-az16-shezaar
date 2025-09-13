@@ -1098,10 +1098,17 @@
         status.innerHTML = '<div class="loading"></div> Finding the perfect outfit for you...';
         
         try {
+          // Prepare current events data to send to the API
+          const currentEventsData = allEvents.map(event => ({
+            event_category: event.event_category || 'General',
+            name: event.name,
+            description: event.description
+          }));
+          
           const resp = await fetch('/api/recommend-outfit', {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, gender })
+            body: JSON.stringify({ message, gender, currentEvents: currentEventsData })
           });
           const data = await resp.json();
           if (!data.ok) throw new Error(data.error || 'Failed');
@@ -1331,7 +1338,8 @@
               url: event.event_url,
               tags: event.event_tags,
               women_specific: event.women_specific,
-              invite_only: event.invite_only
+              invite_only: event.invite_only,
+              event_category: event.event_category
             }));
             filteredEvents = [...allEvents];
             populateFilters(allEvents);
