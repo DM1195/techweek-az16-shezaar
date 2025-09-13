@@ -258,14 +258,25 @@ async function filterEvents(supabase, context, limit = 100) {
     }
 
     // Filter by industry tags - be loose, only filter if we have too many results
-    // If we have fewer than 20 results after usage filtering, don't filter by industry
-    if (context.industries && context.industries.length > 0 && filteredEvents.length > 20) {
+    // If we have fewer than 50 results after usage filtering, don't filter by industry
+    // Accept events with no industry tags, 'ai', or 'startup' as valid matches
+    if (context.industries && context.industries.length > 0 && filteredEvents.length > 50) {
       const beforeFilter = filteredEvents.length;
       const industryFilteredEvents = filteredEvents.filter(event => {
         const eventIndustryTags = event.industry_tags || [];
         const eventTags = event.event_tags || [];
         const allTags = [...eventIndustryTags, ...eventTags];
         
+        // Accept events with no industry tags, 'ai', or 'startup' as valid
+        const hasAcceptableEmptyTags = allTags.length === 0 || 
+          allTags.some(tag => tag.toLowerCase() === 'ai' || tag.toLowerCase() === 'startup');
+        
+        // If event has acceptable empty/ai/startup tags, include it
+        if (hasAcceptableEmptyTags) {
+          return true;
+        }
+        
+        // Otherwise, check if it matches user's industry interests
         return context.industries.some(industry => 
           allTags.some(tag => 
             tag.toLowerCase().includes(industry.toLowerCase()) || 
@@ -519,7 +530,7 @@ module.exports = async (req, res) => {
 
     // Step 2: Filter events based on context
     console.log('🔧 Step 2: Filtering events based on context...');
-    const filteredEvents = await filterEvents(supabase, context, Math.max(100, limit * 10));
+    const filteredEvents = await filterEvents(supabase, context, Math.max(200, limit * 20));
     console.log(`✅ Found ${filteredEvents.length} filtered events`);
 
     // Step 3: Use AI to refine and explain results
