@@ -56,6 +56,22 @@ FROM "UserInteractions"
 GROUP BY type, DATE(created_at)
 ORDER BY date DESC, type;
 
+-- Table for outfit recommendations
+CREATE TABLE IF NOT EXISTS "Outfit Recommendations" (
+  id SERIAL PRIMARY KEY,
+  event_category TEXT NOT NULL, -- Event type (Business Casual, Activity, etc.)
+  gender TEXT NOT NULL, -- Gender preference (female, male, gender-neutral)
+  body_comfort TEXT NOT NULL, -- Comfort level (modest, bold, mid)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for outfit recommendations
+CREATE INDEX IF NOT EXISTS idx_outfit_recommendations_event_category ON "Outfit Recommendations"(event_category);
+CREATE INDEX IF NOT EXISTS idx_outfit_recommendations_gender ON "Outfit Recommendations"(gender);
+CREATE INDEX IF NOT EXISTS idx_outfit_recommendations_body_comfort ON "Outfit Recommendations"(body_comfort);
+
 -- Grant necessary permissions (adjust as needed for your setup)
 -- GRANT SELECT, INSERT ON "UserInteractions" TO authenticated;
+-- GRANT SELECT ON "Outfit Recommendations" TO authenticated;
 -- GRANT SELECT ON interaction_analytics TO authenticated;
