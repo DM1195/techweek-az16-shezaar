@@ -241,11 +241,13 @@ def generate_industry_tags(description: str, event_name: str = "", hosted_by: st
         tags = [tag.strip().lower() for tag in tags_text.split(',') if tag.strip()]
         
         # Validate tags against known industry categories
-        valid_industry_tags = {
-            'ai', 'fintech', 'wellness', 'sustainability', 'blockchain', 'cybersecurity',
-            'startup', 'media', 'enterprise', 'consumer', 'gaming', 'edtech', 'biotech',
-            'mobility', 'real-estate', 'legal', 'hr', 'sales', 'marketing'
-        }
+        # Import centralized tag configuration
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'api'))
+        from tag_config import INDUSTRY_TAGS
+        
+        valid_industry_tags = set(INDUSTRY_TAGS.keys())
         
         # Filter to only include valid tags
         valid_tags = [tag for tag in tags if tag in valid_industry_tags]
@@ -332,11 +334,13 @@ def generate_usage_tags(description: str, event_name: str = "", hosted_by: str =
         tags = [tag.strip().lower() for tag in tags_text.split(',') if tag.strip()]
         
         # Validate tags against known usage categories
-        valid_usage_tags = {
-            'find-cofounder', 'find-angels', 'find-advisors', 'find-users', 
-            'get-user-feedback', 'find-investors', 'find-talent', 'learn-skills',
-            'industry-insights', 'networking'
-        }
+        # Import centralized tag configuration
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'api'))
+        from tag_config import USAGE_TAGS
+        
+        valid_usage_tags = set(USAGE_TAGS.keys())
         
         # Filter to only include valid tags
         valid_tags = [tag for tag in tags if tag in valid_usage_tags]
