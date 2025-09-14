@@ -150,6 +150,16 @@ async function extractUserContext(message, openai) {
       context.relevance_suggestions.primary_criteria.push('Events with industry insights and trend analysis');
     }
     
+    // Extract time preferences
+    if (keywords.includes('evening') || keywords.includes('night') || keywords.includes('after 6') || keywords.includes('after 7') || keywords.includes('after 8')) {
+      context.time_preferences = 'evening';
+      context.relevance_suggestions.primary_criteria.push('Evening events');
+    }
+    if (keywords.includes('morning') || keywords.includes('early') || keywords.includes('breakfast') || keywords.includes('brunch')) {
+      context.time_preferences = 'morning';
+      context.relevance_suggestions.primary_criteria.push('Morning events');
+    }
+    
     // Extract industries
     if (keywords.includes('fashion')) {
       context.industries.push('fashion', 'fashion-tech');
@@ -270,6 +280,168 @@ Return JSON with keys: is_women_specific (boolean), goals (string[]), industries
   }
 }
 
+function rankEventsByRelevance(events, context) {
+  console.log('🔧 Ranking events by relevance...');
+  
+  const scoredEvents = events.map(event => {
+    const score = calculateRelevanceScore(event, context);
+    return { ...event, relevanceScore: score };
+  });
+  
+  // Sort by score (highest first)
+  scoredEvents.sort((a, b) => b.relevanceScore - a.relevanceScore);
+  
+  // Log top 5 events with their scores for debugging
+  console.log('🎯 Top 5 events by relevance score:');
+  scoredEvents.slice(0, 5).forEach((event, index) => {
+    console.log(`${index + 1}. ${event.event_name} - Score: ${event.relevanceScore}`);
+  });
+  
+  return scoredEvents;
+}
+
+function calculateRelevanceScore(event, context) {
+  let score = 0;
+  const scoreBreakdown = [];
+  
+  const eventUsageTags = event.usage_tags || [];
+  const eventIndustryTags = event.industry_tags || [];
+  const eventTags = event.event_tags || [];
+  const allIndustryTags = [...eventIndustryTags, ...eventTags];
+  
+  // Primary scoring: Usage tags (goals) - MOST IMPORTANT
+  if (context.goals && context.goals.length > 0) {
+    const matchingUsageTags = context.goals.filter(goal => 
+      eventUsageTags.includes(goal)
+    );
+    const usageScore = matchingUsageTags.length * 100;
+    score += usageScore;
+    if (usageScore > 0) {
+      scoreBreakdown.push(`Usage tags (${matchingUsageTags.join(', ')}): +${usageScore}`);
+    }
+  }
+  
+  // Secondary scoring: Industry tags - LESS IMPORTANT
+  if (context.industries && context.industries.length > 0) {
+    const matchingIndustryTags = context.industries.filter(industry => 
+      allIndustryTags.some(tag => 
+        tag.toLowerCase().includes(industry.toLowerCase()) || 
+        industry.toLowerCase().includes(tag.toLowerCase())
+      )
+    );
+    const industryScore = matchingIndustryTags.length * 20;
+    score += industryScore;
+    if (industryScore > 0) {
+      scoreBreakdown.push(`Industry tags (${matchingIndustryTags.join(', ')}): +${industryScore}`);
+    }
+  }
+  
+  // Bonus scoring: Events with BOTH usage AND industry tags
+  if (context.goals && context.industries && 
+      context.goals.length > 0 && context.industries.length > 0) {
+    const hasUsageMatch = context.goals.some(goal => eventUsageTags.includes(goal));
+    const hasIndustryMatch = context.industries.some(industry => 
+      allIndustryTags.some(tag => 
+        tag.toLowerCase().includes(industry.toLowerCase()) || 
+        industry.toLowerCase().includes(industry.toLowerCase())
+      )
+    );
+    
+    if (hasUsageMatch && hasIndustryMatch) {
+      score += 150; // High bonus for combined relevance
+      scoreBreakdown.push(`Combined relevance (usage + industry): +150`);
+    }
+  }
+  
+  // Time preference bonus
+  if (context.time_preferences) {
+    const timePref = context.time_preferences.toLowerCase();
+    const eventTime = (event.event_time || '').toLowerCase();
+    const eventDescription = (event.event_description || '').toLowerCase();
+    const eventName = (event.event_name || '').toLowerCase();
+    const allText = `${eventTime} ${eventDescription} ${eventName}`;
+    
+    if (timePref.includes('evening') || timePref.includes('night')) {
+      const eveningIndicators = ['pm', 'evening', 'night', 'dinner', 'cocktail', 'sunset'];
+      if (eveningIndicators.some(indicator => allText.includes(indicator))) {
+        score += 50; // Bonus for evening events when user prefers evening
+        scoreBreakdown.push(`Time preference (evening): +50`);
+      }
+    } else if (timePref.includes('morning') || timePref.includes('early')) {
+      const morningIndicators = ['am', 'morning', 'breakfast', 'brunch', 'early'];
+      if (morningIndicators.some(indicator => allText.includes(indicator))) {
+        score += 50; // Bonus for morning events when user prefers morning
+        scoreBreakdown.push(`Time preference (morning): +50`);
+      }
+    }
+  }
+  
+  // Additional scoring based on AI-identified factors
+  const eventDescription = (event.event_description || '').toLowerCase();
+  const eventName = (event.event_name || '').toLowerCase();
+  const allText = `${eventName} ${eventDescription}`;
+  
+  // Networking opportunities bonus
+  const networkingKeywords = ['networking', 'meet', 'connect', 'social', 'mixer', 'happy hour', 'cocktail'];
+  if (networkingKeywords.some(keyword => allText.includes(keyword))) {
+    score += 25; // Bonus for networking events
+    scoreBreakdown.push(`Networking opportunities: +25`);
+  }
+  
+  // Learning sessions bonus
+  const learningKeywords = ['workshop', 'learn', 'education', 'training', 'bootcamp', 'session', 'seminar', 'masterclass'];
+  if (learningKeywords.some(keyword => allText.includes(keyword))) {
+    score += 25; // Bonus for learning events
+    scoreBreakdown.push(`Learning sessions: +25`);
+  }
+  
+  // Fashion tech specific bonus
+  if (context.industries && context.industries.some(industry => 
+    industry.toLowerCase().includes('fashion') || industry.toLowerCase().includes('fashion-tech')
+  )) {
+    const fashionKeywords = ['fashion', 'style', 'design', 'retail', 'e-commerce', 'beauty', 'apparel'];
+    if (fashionKeywords.some(keyword => allText.includes(keyword))) {
+      score += 30; // Bonus for fashion-related events
+      scoreBreakdown.push(`Fashion tech focus: +30`);
+    }
+  }
+  
+  // Tech focus bonus
+  if (context.industries && context.industries.some(industry => 
+    industry.toLowerCase().includes('tech') || industry.toLowerCase().includes('technology')
+  )) {
+    const techKeywords = ['tech', 'technology', 'startup', 'innovation', 'digital', 'software', 'app', 'platform'];
+    if (techKeywords.some(keyword => allText.includes(keyword))) {
+      score += 20; // Bonus for tech-related events
+      scoreBreakdown.push(`Tech focus: +20`);
+    }
+  }
+  
+  // Women-specific bonus
+  if (context.is_women_specific && event.women_specific) {
+    score += 30;
+    scoreBreakdown.push(`Women-specific: +30`);
+  }
+  
+  // Quality indicators
+  if (event.event_description && event.event_description.length > 100) {
+    score += 10; // Bonus for events with detailed descriptions
+    scoreBreakdown.push(`Detailed description: +10`);
+  }
+  
+  if (event.event_url) {
+    score += 5; // Bonus for events with URLs
+    scoreBreakdown.push(`Has URL: +5`);
+  }
+  
+  // Log detailed scoring for top events
+  if (score > 0) {
+    console.log(`📊 ${event.event_name}: ${score} points (${scoreBreakdown.join(', ')})`);
+  }
+  
+  return score;
+}
+
 async function filterEvents(supabase, context, limit = 100) {
   try {
     console.log('🔧 Building database query with context:', context);
@@ -312,43 +484,10 @@ async function filterEvents(supabase, context, limit = 100) {
       console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on goals`);
     }
 
-    // Filter by industry tags - be loose, only filter if we have too many results
-    // If we have fewer than 50 results after usage filtering, don't filter by industry
-    // Accept events with no industry tags, 'ai', or 'startup' as valid matches
-    if (context.industries && context.industries.length > 0 && filteredEvents.length > 50) {
-      const beforeFilter = filteredEvents.length;
-      const industryFilteredEvents = filteredEvents.filter(event => {
-        const eventIndustryTags = event.industry_tags || [];
-        const eventTags = event.event_tags || [];
-        const allTags = [...eventIndustryTags, ...eventTags];
-        
-        // Accept events with no industry tags, 'ai', or 'startup' as valid
-        const hasAcceptableEmptyTags = allTags.length === 0 || 
-          allTags.some(tag => tag.toLowerCase() === 'ai' || tag.toLowerCase() === 'startup');
-        
-        // If event has acceptable empty/ai/startup tags, include it
-        if (hasAcceptableEmptyTags) {
-          return true;
-        }
-        
-        // Otherwise, check if it matches user's industry interests
-        return context.industries.some(industry => 
-          allTags.some(tag => 
-            tag.toLowerCase().includes(industry.toLowerCase()) || 
-            industry.toLowerCase().includes(tag.toLowerCase())
-          )
-        );
-      });
-      
-      // Only apply industry filtering if we still have results after filtering
-      if (industryFilteredEvents.length > 0) {
-        filteredEvents = industryFilteredEvents;
-        console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on industries (loose filtering)`);
-      } else {
-        console.log(`⚠️ Industry filtering would remove all events, skipping industry filter. Keeping ${filteredEvents.length} events.`);
-      }
-    } else if (context.industries && context.industries.length > 0) {
-      console.log(`✅ Skipping industry filtering - only ${filteredEvents.length} events after usage filtering`);
+    // Industry filtering is now handled by ranking, not filtering
+    // This ensures usage tags always take priority over industry tags
+    if (context.industries && context.industries.length > 0) {
+      console.log(`✅ Industry preferences will be used for ranking, not filtering`);
     }
 
     // Filter by location if specified
@@ -375,6 +514,69 @@ async function filterEvents(supabase, context, limit = 100) {
         return true;
       });
       console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on budget`);
+    }
+
+    // Filter by time preferences if specified
+    if (context.time_preferences) {
+      const beforeFilter = filteredEvents.length;
+      const timePref = context.time_preferences.toLowerCase();
+      
+      filteredEvents = filteredEvents.filter(event => {
+        if (!event.event_time) return true; // Include events without time info
+        
+        const eventTime = event.event_time.toLowerCase();
+        const eventDescription = (event.event_description || '').toLowerCase();
+        const eventName = (event.event_name || '').toLowerCase();
+        const allText = `${eventTime} ${eventDescription} ${eventName}`;
+        
+        // Check for evening preferences
+        if (timePref.includes('evening') || timePref.includes('night')) {
+          // Look for evening time indicators
+          const eveningIndicators = [
+            'pm', 'evening', 'night', 'dinner', 'cocktail', 'sunset', 'after 6', 'after 7', 'after 8',
+            '6pm', '7pm', '8pm', '9pm', '10pm', '11pm', '12am', '1am', '2am'
+          ];
+          
+          // Check if time contains PM or evening keywords
+          const hasEveningTime = eveningIndicators.some(indicator => 
+            eventTime.includes(indicator) || allText.includes(indicator)
+          );
+          
+          // Also check for morning indicators to exclude them
+          const morningIndicators = [
+            'am', 'morning', 'breakfast', 'brunch', 'early', 'before 12', 'before 1',
+            '6am', '7am', '8am', '9am', '10am', '11am', '12pm'
+          ];
+          
+          const hasMorningTime = morningIndicators.some(indicator => 
+            eventTime.includes(indicator) || allText.includes(indicator)
+          );
+          
+          return hasEveningTime && !hasMorningTime;
+        }
+        
+        // Check for morning preferences
+        if (timePref.includes('morning') || timePref.includes('early')) {
+          const morningIndicators = [
+            'am', 'morning', 'breakfast', 'brunch', 'early', 'before 12', 'before 1',
+            '6am', '7am', '8am', '9am', '10am', '11am', '12pm'
+          ];
+          
+          const hasMorningTime = morningIndicators.some(indicator => 
+            eventTime.includes(indicator) || allText.includes(indicator)
+          );
+          
+          return hasMorningTime;
+        }
+        
+        return true;
+      });
+      console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on time preferences: ${context.time_preferences}`);
+    }
+
+    // Apply intelligent ranking based on relevance
+    if (filteredEvents.length > 0) {
+      filteredEvents = rankEventsByRelevance(filteredEvents, context);
     }
 
     console.log(`🎯 Final filtered events: ${filteredEvents.length}`);
@@ -421,6 +623,13 @@ User Context: ${JSON.stringify(context, null, 2)}
 Available Events:
 ${eventSummaries}
 
+IMPORTANT RANKING PRIORITIES (in order):
+1. USAGE TAGS (Goals) - HIGHEST PRIORITY: Events with matching usage tags (find-cofounder, find-investors, find-talent, etc.)
+2. COMBINED RELEVANCE - HIGH PRIORITY: Events that match BOTH usage tags AND industry preferences
+3. TIME PREFERENCES - HIGH PRIORITY: Events that match user's time preferences (evening, morning, etc.)
+4. INDUSTRY TAGS - MEDIUM PRIORITY: Events that match industry preferences but may not have usage tags
+5. GENERAL RELEVANCE - LOWEST PRIORITY: Other relevant events
+
 Instructions:
 1. Select the top ${limit} most relevant events for this user
 2. For each selected event, provide a clear, detailed explanation of why it's a good match
@@ -428,17 +637,17 @@ Instructions:
    - Primary criteria: ${context.relevance_suggestions?.primary_criteria?.join(', ') || 'General relevance'}
    - Secondary criteria: ${context.relevance_suggestions?.secondary_criteria?.join(', ') || 'Industry alignment'}
    - Ranking rationale: ${context.relevance_suggestions?.ranking_rationale || 'Events selected based on general relevance'}
-4. PRIORITIZE events that match the user's primary goals (especially cofounder, investor, talent finding)
-5. Industry matching is secondary - include events that match goals even if industry doesn't perfectly align
-6. If the user is looking for women-specific events, prioritize those
-7. Consider event quality, networking potential, and relevance
-8. For cofounder queries, prioritize events with 'find-cofounder' usage tags
-9. For investor queries, prioritize events with 'find-investors' or 'find-angels' usage tags
-10. For talent queries, prioritize events with 'find-talent' usage tags
+4. ALWAYS prioritize events with matching usage tags over industry-only matches
+5. If user prefers evening events, prioritize evening events over morning events
+6. If user prefers morning events, prioritize morning events over evening events
+7. Events with BOTH usage tags AND industry matches should rank highest
+8. If the user is looking for women-specific events, prioritize those
+9. Consider event quality, networking potential, and relevance
 
 For each event explanation, include:
-- Why it matches the user's primary goals
+- Why it matches the user's primary goals (usage tags)
 - How it aligns with their industry interests (if applicable)
+- Time preference alignment (if specified)
 - What specific value it provides (networking, learning, funding opportunities, etc.)
 - Any special features that make it particularly relevant
 
@@ -447,10 +656,10 @@ Return JSON in this format:
   "selected_events": [
     {
       "index": 1,
-      "explanation": "Detailed explanation of why this event is perfect for the user, including specific reasons based on their goals and industry"
+      "explanation": "Detailed explanation of why this event is perfect for the user, including specific reasons based on their goals, industry, and time preferences"
     }
   ],
-  "overall_reasoning": "Comprehensive summary of your selection strategy, including how you applied the relevance criteria and why these events were ranked highest"
+  "overall_reasoning": "Comprehensive summary of your selection strategy, including how you prioritized usage tags over industry tags and considered time preferences"
 }`;
 
     const response = await openai.chat.completions.create({
