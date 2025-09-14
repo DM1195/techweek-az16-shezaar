@@ -66,7 +66,7 @@ module.exports = async (req, res) => {
   try {
     if (req.method === 'GET') {
       const q = req.query.q || '';
-      const limit = req.query.limit || 100;
+      const limit = req.query.limit || 2000;
       const data = await fetchEvents(supabase, { q, limit });
       return res.status(200).json({ ok: true, count: data.length, events: data });
     }

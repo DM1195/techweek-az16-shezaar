@@ -493,7 +493,7 @@ function calculateRelevanceScore(event, context) {
   return score;
 }
 
-async function filterEvents(supabase, context, limit = 100) {
+async function filterEvents(supabase, context, limit = 1000) {
   try {
     console.log('🔧 Building database query with context:', context);
     
