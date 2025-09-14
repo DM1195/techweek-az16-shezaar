@@ -982,7 +982,7 @@
         transform: translateY(-2px) scale(1.02);
         box-shadow: 0 8px 25px rgba(74, 93, 35, 0.4), 0 0 0 1px rgba(74, 93, 35, 0.2);
         background: linear-gradient(135deg, #daded8 0%, #2c3424 100%);
-        color: #daded8;
+        color: #2c3424;
       }
       
       .modal-btn:hover::before {
@@ -1004,7 +1004,7 @@
       }
       
       .modal-btn.secondary:hover {
-        background: linear-gradient(135deg, #daded8 0%, #2c3424 100%);
+        background: linear-gradient(135deg, #2c3424 0%, #daded8 100%);
         color: #daded8;
         border-color: #daded8;
         transform: translateY(-1px) scale(1.01);
@@ -1979,7 +1979,9 @@
         `).join('');
       }
       
-      async function clearFilters() {
+      function clearFilters() {
+        console.log('clearFilters called');
+        
         // Clear selected filters
         selectedDays = [];
         selectedLocations = [];
@@ -2009,74 +2011,24 @@
           dd.previousElementSibling.classList.remove('open');
         });
         
-        // Fetch all events from database
-        try {
-          status.innerHTML = '<div class="loading"></div> Loading all events...';
-          const resp = await fetch('/api/get-events?limit=2000');
-          const data = await resp.json();
-          if (data.ok && data.events) {
-            allEvents = data.events.map(event => ({
-              id: event.id,
-              name: event.event_name,
-              description: event.event_description,
-              date: event.event_date,
-              time: event.event_time,
-              location: event.event_location,
-              host: event.hosted_by,
-              price: event.price,
-              url: event.event_url,
-              tags: event.event_tags,
-              women_specific: event.women_specific,
-              invite_only: event.invite_only,
-              event_category: event.event_category
-            }));
-            filteredEvents = [...allEvents];
-            populateFilters(allEvents);
-            renderEvents();
-            
-            // Hide AI reasoning when showing all events
-            aiReasoningEl.hidden = true;
-            
-            // Update results title to show all events
-            const resultsTitle = $('results-title');
-            if (resultsTitle) {
-              resultsTitle.textContent = 'All Events';
-            }
-            
-            status.textContent = '';
-          } else {
-            // Fallback to current filtered events
-            filteredEvents = [...allEvents];
-            renderEvents();
-            
-            // Hide AI reasoning when showing all events
-            aiReasoningEl.hidden = true;
-            
-            // Update results title to show all events
-            const resultsTitle = $('results-title');
-            if (resultsTitle) {
-              resultsTitle.textContent = 'All Events';
-            }
-            
-            status.textContent = '';
-          }
-        } catch (error) {
-          console.error('Error fetching all events:', error);
-          // Fallback to current filtered events
-          filteredEvents = [...allEvents];
-          renderEvents();
-          
-          // Hide AI reasoning when showing all events
-          aiReasoningEl.hidden = true;
-          
-          // Update results title to show all events
-          const resultsTitle = $('results-title');
-          if (resultsTitle) {
-            resultsTitle.textContent = 'All Events';
-          }
-          
-          status.textContent = '';
+        // Reset to show all events
+        filteredEvents = [...allEvents];
+        
+        // Update results title to show all events
+        const resultsTitle = $('results-title');
+        if (resultsTitle) {
+          resultsTitle.textContent = 'All Events';
         }
+        
+        // Hide AI reasoning when showing all events
+        if (aiReasoningEl) {
+          aiReasoningEl.hidden = true;
+        }
+        
+        // Re-render events
+        renderEvents();
+        
+        console.log('clearFilters completed, showing', filteredEvents.length, 'events');
       }
       
       function renderAIReasoning() {
