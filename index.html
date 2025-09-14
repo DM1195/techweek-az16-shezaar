@@ -1347,10 +1347,19 @@
               </div>
             </div>
             <div class="filter-group">
-              <label>Topic</label>
+              <label>Industry</label>
               <div class="multi-select-container">
-                <div class="multi-select-display" id="topic-display">All Topics</div>
-                <div class="multi-select-dropdown" id="topic-dropdown">
+                <div class="multi-select-display" id="industry-display">All Industries</div>
+                <div class="multi-select-dropdown" id="industry-dropdown">
+                  <!-- Options will be populated by JavaScript -->
+                </div>
+              </div>
+            </div>
+            <div class="filter-group">
+              <label>Type</label>
+              <div class="multi-select-container">
+                <div class="multi-select-display" id="type-display">All Types</div>
+                <div class="multi-select-dropdown" id="type-dropdown">
                   <!-- Options will be populated by JavaScript -->
                 </div>
               </div>
@@ -1442,8 +1451,10 @@
       const dayDropdown = $('day-dropdown');
       const locationDisplay = $('location-display');
       const locationDropdown = $('location-dropdown');
-      const topicDisplay = $('topic-display');
-      const topicDropdown = $('topic-dropdown');
+      const industryDisplay = $('industry-display');
+      const industryDropdown = $('industry-dropdown');
+      const typeDisplay = $('type-display');
+      const typeDropdown = $('type-dropdown');
       const sortSelect = $('sort-select');
       const clearFiltersBtn = $('clear-filters');
       const aiReasoningEl = $('ai-reasoning');
@@ -1499,7 +1510,8 @@
       let aiReasoning = null;
       let selectedDays = [];
       let selectedLocations = [];
-      let selectedTopics = [];
+      let selectedIndustries = [];
+      let selectedTypes = [];
 
       // Function to log user interactions to Supabase
       async function logInteraction(type, data) {
@@ -1793,11 +1805,35 @@
           `<div class="multi-select-option" data-value="${loc}">${loc}</div>`
         ).join('');
         
-        // Populate topic filter from tags
-        const topics = [...new Set(events.flatMap(e => e.tags || []).filter(Boolean))].sort();
-        topicDropdown.innerHTML = topics.map(topic => 
-          `<div class="multi-select-option" data-value="${topic}">${topic}</div>`
-        ).join('');
+        // Populate industry filter from centralized config
+        const industryTags = [
+          'ai-ml', 'fintech', 'healthtech', 'edtech', 'cybersecurity',
+          'blockchain', 'sustainability', 'biotech', 'quantum',
+          'enterprise', 'consumer', 'startup', 'media', 'gaming',
+          'mobility', 'real-estate', 'legal', 'hr', 'sales', 'marketing',
+          'fashion-tech', 'food-tech', 'space', 'robotics'
+        ];
+        
+        industryDropdown.innerHTML = industryTags.map(industry => {
+          const displayName = industry.split('-').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1)
+          ).join(' ');
+          return `<div class="multi-select-option" data-value="${industry}">${displayName}</div>`;
+        }).join('');
+        
+        // Populate type filter from centralized usage tags
+        const typeTags = [
+          'find-cofounder', 'find-investors', 'find-angels', 'find-talent', 'find-customers',
+          'find-advisors', 'find-partners', 'get-feedback', 'learn-skills', 'industry-insights', 'networking',
+          'pitch-opportunities', 'fundraising', 'product-launch', 'women-specific'
+        ];
+        
+        typeDropdown.innerHTML = typeTags.map(type => {
+          const displayName = type.replace(/-/g, ' ').split(' ').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1)
+          ).join(' ');
+          return `<div class="multi-select-option" data-value="${type}">${displayName}</div>`;
+        }).join('');
       }
       
       // Multi-select functionality
@@ -1859,26 +1895,51 @@
         }
       }
       
-      function updateTopicDisplay() {
-        if (selectedTopics.length === 0) {
-          topicDisplay.textContent = 'All Topics';
-        } else if (selectedTopics.length === 1) {
-          topicDisplay.textContent = selectedTopics[0];
+      function updateIndustryDisplay() {
+        if (selectedIndustries.length === 0) {
+          industryDisplay.textContent = 'All Industries';
+        } else if (selectedIndustries.length === 1) {
+          const displayName = selectedIndustries[0].split('-').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1)
+          ).join(' ');
+          industryDisplay.textContent = displayName;
         } else {
-          topicDisplay.textContent = `${selectedTopics.length} topics selected`;
+          industryDisplay.textContent = `${selectedIndustries.length} industries selected`;
         }
       }
       
+      function updateTypeDisplay() {
+        if (selectedTypes.length === 0) {
+          typeDisplay.textContent = 'All Types';
+        } else if (selectedTypes.length === 1) {
+          const displayName = selectedTypes[0].replace(/-/g, ' ').split(' ').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1)
+          ).join(' ');
+          typeDisplay.textContent = displayName;
+        } else {
+          typeDisplay.textContent = `${selectedTypes.length} types selected`;
+        }
+      }
+      
+      
       function applyFilters() {
+        console.log('applyFilters called');
+        console.log('selectedDays:', selectedDays);
+        console.log('selectedLocations:', selectedLocations);
+        console.log('selectedIndustries:', selectedIndustries);
+        console.log('selectedTypes:', selectedTypes);
+        
         filteredEvents = allEvents.filter(event => {
           const dayMatch = selectedDays.length === 0 || 
                           selectedDays.some(day => event.date?.includes(day) || getDayFromDate(event.date) === day);
           const locationMatch = selectedLocations.length === 0 || 
                                selectedLocations.includes(event.location);
-          const topicMatch = selectedTopics.length === 0 || 
-                            (event.tags && selectedTopics.some(topic => event.tags.includes(topic)));
+          const industryMatch = selectedIndustries.length === 0 || 
+                                (event.industry_tags && selectedIndustries.some(industry => event.industry_tags.includes(industry)));
+          const typeMatch = selectedTypes.length === 0 || 
+                            (event.usage_tags && selectedTypes.some(type => event.usage_tags.includes(type)));
           
-          return dayMatch && locationMatch && topicMatch;
+          return dayMatch && locationMatch && industryMatch && typeMatch;
         });
         
         renderEvents();
@@ -1892,7 +1953,9 @@
       }
       
       function sortEvents() {
+        console.log('sortEvents called');
         const sortBy = sortSelect.value;
+        console.log('Sorting by:', sortBy);
         
         filteredEvents.sort((a, b) => {
           switch (sortBy) {
@@ -1952,7 +2015,8 @@
         // Clear selected filters
         selectedDays = [];
         selectedLocations = [];
-        selectedTopics = [];
+        selectedIndustries = [];
+        selectedTypes = [];
         
         // Clear query input
         input.value = '';
@@ -1963,7 +2027,8 @@
         // Clear multi-select displays
         updateDayDisplay();
         updateLocationDisplay();
-        updateTopicDisplay();
+        updateIndustryDisplay();
+        updateTypeDisplay();
         
         // Clear selected states in dropdowns
         document.querySelectorAll('.multi-select-option').forEach(option => {
@@ -2124,9 +2189,39 @@
       });
       
       // Initialize multi-select components
-      initializeMultiSelect(dayDisplay, dayDropdown, selectedDays, updateDayDisplay);
-      initializeMultiSelect(locationDisplay, locationDropdown, selectedLocations, updateLocationDisplay);
-      initializeMultiSelect(topicDisplay, topicDropdown, selectedTopics, updateTopicDisplay);
+      console.log('Initializing multi-select components...');
+      console.log('dayDisplay:', dayDisplay, 'dayDropdown:', dayDropdown);
+      console.log('locationDisplay:', locationDisplay, 'locationDropdown:', locationDropdown);
+      console.log('industryDisplay:', industryDisplay, 'industryDropdown:', industryDropdown);
+      console.log('typeDisplay:', typeDisplay, 'typeDropdown:', typeDropdown);
+      
+      if (dayDisplay && dayDropdown) {
+        initializeMultiSelect(dayDisplay, dayDropdown, selectedDays, updateDayDisplay);
+        console.log('Day filter initialized');
+      } else {
+        console.error('Day filter elements not found!');
+      }
+      
+      if (locationDisplay && locationDropdown) {
+        initializeMultiSelect(locationDisplay, locationDropdown, selectedLocations, updateLocationDisplay);
+        console.log('Location filter initialized');
+      } else {
+        console.error('Location filter elements not found!');
+      }
+      
+      if (industryDisplay && industryDropdown) {
+        initializeMultiSelect(industryDisplay, industryDropdown, selectedIndustries, updateIndustryDisplay);
+        console.log('Industry filter initialized');
+      } else {
+        console.error('Industry filter elements not found!');
+      }
+      
+      if (typeDisplay && typeDropdown) {
+        initializeMultiSelect(typeDisplay, typeDropdown, selectedTypes, updateTypeDisplay);
+        console.log('Type filter initialized');
+      } else {
+        console.error('Type filter elements not found!');
+      }
       
       // Close dropdowns when clicking outside
       document.addEventListener('click', (e) => {
@@ -2139,8 +2234,23 @@
       });
       
       // Filter and sort event listeners
-      sortSelect.addEventListener('change', sortEvents);
-      clearFiltersBtn.addEventListener('click', clearFilters);
+      console.log('Setting up event listeners...');
+      console.log('sortSelect:', sortSelect);
+      console.log('clearFiltersBtn:', clearFiltersBtn);
+      
+      if (sortSelect) {
+        sortSelect.addEventListener('change', sortEvents);
+        console.log('Sort event listener attached');
+      } else {
+        console.error('sortSelect element not found!');
+      }
+      
+      if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', clearFilters);
+        console.log('Clear filters event listener attached');
+      } else {
+        console.error('clearFiltersBtn element not found!');
+      }
     </script>
   </body>
   </html>
