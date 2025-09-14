@@ -101,44 +101,76 @@ async function extractUserContext(message, openai) {
       industries: [],
       location: null,
       time_preferences: null,
-      budget: null
+      budget: null,
+      relevance_suggestions: {
+        primary_criteria: [],
+        secondary_criteria: [],
+        ranking_rationale: ''
+      }
     };
     
     // Extract goals - be more comprehensive
     if (keywords.includes('hire') || keywords.includes('hiring') || keywords.includes('engineers') || keywords.includes('talent') || keywords.includes('recruit')) {
       context.goals.push('find-talent', 'hiring');
+      context.relevance_suggestions.primary_criteria.push('Events with talent recruitment focus');
+      context.relevance_suggestions.ranking_rationale = 'Prioritize events focused on hiring, talent acquisition, and recruitment';
     }
     if (keywords.includes('investor') || keywords.includes('funding') || keywords.includes('angel') || keywords.includes('vc') || keywords.includes('venture')) {
       context.goals.push('find-investors', 'find-angels');
+      context.relevance_suggestions.primary_criteria.push('Events with investor networking and funding focus');
+      context.relevance_suggestions.ranking_rationale = 'Prioritize events with investor panels, pitch nights, and funding opportunities';
     }
     if (keywords.includes('co-founder') || keywords.includes('cofounder') || keywords.includes('co founder') || keywords.includes('partner') || keywords.includes('cofounder')) {
       context.goals.push('find-cofounder');
+      context.relevance_suggestions.primary_criteria.push('Events with co-founder matching and startup partnerships');
+      context.relevance_suggestions.ranking_rationale = 'Prioritize events specifically designed for co-founder matching and startup partnerships';
     }
     if (keywords.includes('customer') || keywords.includes('user') || keywords.includes('client') || keywords.includes('users')) {
       context.goals.push('find-users');
+      context.relevance_suggestions.primary_criteria.push('Events with customer discovery and user research focus');
     }
     if (keywords.includes('advisor') || keywords.includes('mentor') || keywords.includes('guidance')) {
       context.goals.push('find-advisors');
+      context.relevance_suggestions.primary_criteria.push('Events with mentorship and advisory opportunities');
     }
     if (keywords.includes('network') || keywords.includes('networking') || keywords.includes('connect') || keywords.includes('meet')) {
       context.goals.push('networking');
+      context.relevance_suggestions.primary_criteria.push('Events with strong networking opportunities');
     }
     if (keywords.includes('learn') || keywords.includes('learning') || keywords.includes('skill') || keywords.includes('education')) {
       context.goals.push('learn-skills');
+      context.relevance_suggestions.primary_criteria.push('Events with educational and skill-building focus');
     }
     if (keywords.includes('feedback') || keywords.includes('validate') || keywords.includes('test')) {
       context.goals.push('get-user-feedback');
+      context.relevance_suggestions.primary_criteria.push('Events with user feedback and validation opportunities');
     }
     if (keywords.includes('insight') || keywords.includes('industry') || keywords.includes('trend')) {
       context.goals.push('industry-insights');
+      context.relevance_suggestions.primary_criteria.push('Events with industry insights and trend analysis');
     }
     
     // Extract industries
-    if (keywords.includes('fashion')) context.industries.push('fashion', 'fashion-tech');
-    if (keywords.includes('tech')) context.industries.push('tech', 'technology');
-    if (keywords.includes('ai') || keywords.includes('artificial intelligence')) context.industries.push('ai', 'artificial-intelligence');
-    if (keywords.includes('fintech')) context.industries.push('fintech');
-    if (keywords.includes('wellness') || keywords.includes('health')) context.industries.push('wellness', 'health-tech');
+    if (keywords.includes('fashion')) {
+      context.industries.push('fashion', 'fashion-tech');
+      context.relevance_suggestions.secondary_criteria.push('Fashion tech industry events');
+    }
+    if (keywords.includes('tech')) {
+      context.industries.push('tech', 'technology');
+      context.relevance_suggestions.secondary_criteria.push('General tech industry events');
+    }
+    if (keywords.includes('ai') || keywords.includes('artificial intelligence')) {
+      context.industries.push('ai', 'artificial-intelligence');
+      context.relevance_suggestions.secondary_criteria.push('AI and artificial intelligence focused events');
+    }
+    if (keywords.includes('fintech')) {
+      context.industries.push('fintech');
+      context.relevance_suggestions.secondary_criteria.push('Fintech industry events');
+    }
+    if (keywords.includes('wellness') || keywords.includes('health')) {
+      context.industries.push('wellness', 'health-tech');
+      context.relevance_suggestions.secondary_criteria.push('Wellness and health tech industry events');
+    }
     
     return context;
   }
@@ -152,10 +184,16 @@ Focus on identifying:
 4. Location: Any specific area preferences?
 5. Time: Any time preferences?
 6. Budget: Free vs paid events?
+7. Relevance Suggestions: What should be prioritized in event ranking?
+
+For relevance suggestions, provide:
+- Primary criteria: The most important factors for ranking events
+- Secondary criteria: Additional factors that should influence ranking
+- Ranking rationale: A brief explanation of how events should be prioritized
 
 IMPORTANT: Be broad and inclusive in your extraction. If someone mentions "female founder" they likely want women-specific events. If they mention "hiring engineers" they want talent/recruitment events.
 
-Return JSON with keys: is_women_specific (boolean), goals (string[]), industries (string[]), location (string|null), time_preferences (string|null), budget (string|null).`;
+Return JSON with keys: is_women_specific (boolean), goals (string[]), industries (string[]), location (string|null), time_preferences (string|null), budget (string|null), relevance_suggestions (object with primary_criteria, secondary_criteria, ranking_rationale).`;
 
   const user = `User message: ${message}`;
 
@@ -208,10 +246,27 @@ Return JSON with keys: is_women_specific (boolean), goals (string[]), industries
       industries: Array.isArray(data.industries) ? data.industries : [],
       location: data.location || null,
       time_preferences: data.time_preferences || null,
-      budget: data.budget || null
+      budget: data.budget || null,
+      relevance_suggestions: data.relevance_suggestions || {
+        primary_criteria: [],
+        secondary_criteria: [],
+        ranking_rationale: 'Events selected based on general relevance to your query'
+      }
     };
   } catch {
-    return { is_women_specific: false, goals: [], industries: [], location: null, time_preferences: null, budget: null };
+    return { 
+      is_women_specific: false, 
+      goals: [], 
+      industries: [], 
+      location: null, 
+      time_preferences: null, 
+      budget: null,
+      relevance_suggestions: {
+        primary_criteria: [],
+        secondary_criteria: [],
+        ranking_rationale: 'Events selected based on general relevance to your query'
+      }
+    };
   }
 }
 
@@ -368,22 +423,34 @@ ${eventSummaries}
 
 Instructions:
 1. Select the top ${limit} most relevant events for this user
-2. For each selected event, provide a clear, concise explanation of why it's a good match
-3. PRIORITIZE events that match the user's primary goals (especially cofounder, investor, talent finding)
-4. Industry matching is secondary - include events that match goals even if industry doesn't perfectly align
-5. If the user is looking for women-specific events, prioritize those
-6. Consider event quality, networking potential, and relevance
-7. For cofounder queries, prioritize events with 'find-cofounder' usage tags
+2. For each selected event, provide a clear, detailed explanation of why it's a good match
+3. Use the relevance suggestions to guide your ranking:
+   - Primary criteria: ${context.relevance_suggestions?.primary_criteria?.join(', ') || 'General relevance'}
+   - Secondary criteria: ${context.relevance_suggestions?.secondary_criteria?.join(', ') || 'Industry alignment'}
+   - Ranking rationale: ${context.relevance_suggestions?.ranking_rationale || 'Events selected based on general relevance'}
+4. PRIORITIZE events that match the user's primary goals (especially cofounder, investor, talent finding)
+5. Industry matching is secondary - include events that match goals even if industry doesn't perfectly align
+6. If the user is looking for women-specific events, prioritize those
+7. Consider event quality, networking potential, and relevance
+8. For cofounder queries, prioritize events with 'find-cofounder' usage tags
+9. For investor queries, prioritize events with 'find-investors' or 'find-angels' usage tags
+10. For talent queries, prioritize events with 'find-talent' usage tags
+
+For each event explanation, include:
+- Why it matches the user's primary goals
+- How it aligns with their industry interests (if applicable)
+- What specific value it provides (networking, learning, funding opportunities, etc.)
+- Any special features that make it particularly relevant
 
 Return JSON in this format:
 {
   "selected_events": [
     {
       "index": 1,
-      "explanation": "Why this event is perfect for the user"
+      "explanation": "Detailed explanation of why this event is perfect for the user, including specific reasons based on their goals and industry"
     }
   ],
-  "overall_reasoning": "Brief summary of your selection strategy"
+  "overall_reasoning": "Comprehensive summary of your selection strategy, including how you applied the relevance criteria and why these events were ranked highest"
 }`;
 
     const response = await openai.chat.completions.create({
@@ -588,7 +655,15 @@ module.exports = async (req, res) => {
       results, 
       count: results.length,
       overallReasoning: overallReasoning || 'Events selected based on your query and context',
-      explanations: explanations
+      explanations: explanations,
+      aiReasoning: {
+        overall: overallReasoning || 'Events selected based on your query and context',
+        events: results.map((event, index) => ({
+          name: event.name,
+          reason: event.aiExplanation || explanations[index] || 'Selected based on relevance to your query'
+        })),
+        relevance_suggestions: context.relevance_suggestions
+      }
     });
   } catch (err) {
     console.error('❌ Error in recommend-events:', err);

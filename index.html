@@ -631,6 +631,72 @@
         font-size: 13px;
       }
       
+      .overall-analysis {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 8px;
+        border-left: 4px solid #6c757d;
+      }
+      
+      .relevance-suggestions {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        border-radius: 8px;
+        border-left: 4px solid #2196f3;
+      }
+      
+      .relevance-details {
+        margin-top: 10px;
+      }
+      
+      .ranking-rationale, .primary-criteria, .secondary-criteria {
+        margin: 8px 0;
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.7);
+        border-radius: 6px;
+        font-size: 14px;
+      }
+      
+      .primary-criteria {
+        border-left: 3px solid #4caf50;
+      }
+      
+      .secondary-criteria {
+        border-left: 3px solid #ff9800;
+      }
+      
+      .event-specific-reasoning {
+        margin-top: 15px;
+      }
+      
+      .event-reason {
+        margin: 12px 0;
+        padding: 15px;
+        background: rgba(218, 222, 216, 0.1);
+        border-radius: 8px;
+        border-left: 3px solid #daded8;
+        transition: all 0.3s ease;
+      }
+      
+      .event-reason:hover {
+        background: rgba(218, 222, 216, 0.2);
+        transform: translateX(2px);
+      }
+      
+      .event-name {
+        margin-bottom: 8px;
+        color: #2c3424;
+        font-size: 16px;
+      }
+      
+      .event-explanation {
+        color: #555;
+        line-height: 1.5;
+        font-size: 14px;
+      }
+      
       .floating-outfit-btn {
         position: fixed !important;
         bottom: 20px !important;
@@ -1780,13 +1846,38 @@
           return;
         }
         
+        let relevanceSection = '';
+        if (aiReasoning.relevance_suggestions) {
+          const suggestions = aiReasoning.relevance_suggestions;
+          relevanceSection = `
+            <div class="relevance-suggestions">
+              <strong>🎯 Relevance Strategy:</strong><br>
+              <div class="relevance-details">
+                ${suggestions.ranking_rationale ? `<div class="ranking-rationale"><strong>Ranking Approach:</strong> ${suggestions.ranking_rationale}</div>` : ''}
+                ${suggestions.primary_criteria && suggestions.primary_criteria.length > 0 ? 
+                  `<div class="primary-criteria"><strong>Primary Focus:</strong> ${suggestions.primary_criteria.join(', ')}</div>` : ''}
+                ${suggestions.secondary_criteria && suggestions.secondary_criteria.length > 0 ? 
+                  `<div class="secondary-criteria"><strong>Secondary Factors:</strong> ${suggestions.secondary_criteria.join(', ')}</div>` : ''}
+              </div>
+            </div>
+          `;
+        }
+        
         reasoningContentEl.innerHTML = `
           <div class="reasoning-content">
-            <strong>Overall Analysis:</strong> ${aiReasoning.overall || 'No overall reasoning provided'}<br><br>
-            <strong>Event-Specific Reasoning:</strong>
-            ${aiReasoning.events && aiReasoning.events.length > 0 ? aiReasoning.events.map(event => 
-              `<div class="event-reason"><strong>${event.name}:</strong> ${event.reason}</div>`
-            ).join('') : 'No event-specific reasoning provided'}
+            <div class="overall-analysis">
+              <strong>🧠 Overall Analysis:</strong> ${aiReasoning.overall || 'No overall reasoning provided'}
+            </div>
+            ${relevanceSection}
+            <div class="event-specific-reasoning">
+              <strong>📋 Event-Specific Reasoning:</strong>
+              ${aiReasoning.events && aiReasoning.events.length > 0 ? aiReasoning.events.map(event => 
+                `<div class="event-reason">
+                  <div class="event-name"><strong>${event.name}</strong></div>
+                  <div class="event-explanation">${event.reason}</div>
+                </div>`
+              ).join('') : 'No event-specific reasoning provided'}
+            </div>
           </div>
         `;
         aiReasoningEl.hidden = false;
