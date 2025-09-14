@@ -746,8 +746,8 @@ Instructions:
 1. Select the top ${limit} most relevant events for this user
 2. For each selected event, provide a clear, detailed explanation of why it's a good match
 3. Use the relevance suggestions to guide your ranking:
-   - Primary criteria: ${context.relevance_suggestions?.primary_criteria?.join(', ') || 'General relevance'}
-   - Secondary criteria: ${context.relevance_suggestions?.secondary_criteria?.join(', ') || 'Industry alignment'}
+   - Primary criteria: ${Array.isArray(context.relevance_suggestions?.primary_criteria) ? context.relevance_suggestions.primary_criteria.join(', ') : 'General relevance'}
+   - Secondary criteria: ${Array.isArray(context.relevance_suggestions?.secondary_criteria) ? context.relevance_suggestions.secondary_criteria.join(', ') : 'Industry alignment'}
    - Ranking rationale: ${context.relevance_suggestions?.ranking_rationale || 'Events selected based on general relevance'}
 4. ALWAYS prioritize events with matching usage tags over industry-only matches
 5. If user prefers evening events, prioritize evening events over morning events

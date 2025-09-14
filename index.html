@@ -2060,9 +2060,9 @@
               <strong>🎯 Relevance Strategy:</strong><br>
               <div class="relevance-details">
                 ${suggestions.ranking_rationale ? `<div class="ranking-rationale"><strong>Ranking Approach:</strong> ${suggestions.ranking_rationale}</div>` : ''}
-                ${suggestions.primary_criteria && suggestions.primary_criteria.length > 0 ? 
+                ${suggestions.primary_criteria && Array.isArray(suggestions.primary_criteria) && suggestions.primary_criteria.length > 0 ? 
                   `<div class="primary-criteria"><strong>Primary Focus:</strong> ${suggestions.primary_criteria.join(', ')}</div>` : ''}
-                ${suggestions.secondary_criteria && suggestions.secondary_criteria.length > 0 ? 
+                ${suggestions.secondary_criteria && Array.isArray(suggestions.secondary_criteria) && suggestions.secondary_criteria.length > 0 ? 
                   `<div class="secondary-criteria"><strong>Secondary Factors:</strong> ${suggestions.secondary_criteria.join(', ')}</div>` : ''}
               </div>
             </div>
