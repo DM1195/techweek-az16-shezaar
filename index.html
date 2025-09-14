@@ -911,19 +911,6 @@
         margin-bottom: 0;
       }
 
-      .outfit-navigation {
-        text-align: center;
-        margin-top: 20px;
-        padding-top: 16px;
-        border-top: 1px solid rgba(218, 222, 216, 0.2);
-      }
-
-      .outfit-counter {
-        color: rgba(218, 222, 216, 0.7);
-        font-size: 14px;
-        font-weight: 500;
-        font-style: italic;
-      }
       
       .event-types {
         background: rgba(218, 222, 216, 0.1);
@@ -1032,20 +1019,6 @@
         box-shadow: 0 2px 8px rgba(74, 93, 35, 0.4);
       }
 
-      .modal-btn.hero {
-        background: linear-gradient(135deg, #4a5d23 0%, #6b7c32 100%);
-        color: #daded8;
-        font-size: 16px;
-        padding: 14px 28px;
-        font-weight: 700;
-        box-shadow: 0 8px 25px rgba(74, 93, 35, 0.4), 0 0 0 1px rgba(218, 222, 216, 0.1);
-      }
-
-      .modal-btn.hero:hover {
-        background: linear-gradient(135deg, #5a6d33 0%, #7b8c42 100%);
-        transform: translateY(-3px) scale(1.05);
-        box-shadow: 0 12px 35px rgba(74, 93, 35, 0.5), 0 0 0 1px rgba(218, 222, 216, 0.2);
-      }
 
       .modal-btn.underlined {
         text-decoration: underline;
@@ -1378,7 +1351,7 @@
       <div id="outfit-modal" class="modal-overlay">
         <div class="modal-content">
           <div class="modal-header">
-            <h3 class="modal-title">Get Outfit Ideas</h3>
+            <h3 class="modal-title">Outfit Ideas</h3>
             <button class="modal-close" id="modal-close">&times;</button>
           </div>
           
@@ -1405,7 +1378,7 @@
           
           <div class="modal-actions">
             <button class="modal-btn secondary" id="modal-close-btn">Close</button>
-            <button class="modal-btn hero" id="shop-products-btn" style="display: none;">Shop For Products</button>
+            <button class="modal-btn" id="shop-products-btn" style="display: none;">Shop For Products</button>
             <button class="modal-btn secondary underlined" id="get-another-outfit" style="display: none;">Another Recommendation</button>
           </div>
         </div>
@@ -1687,12 +1660,6 @@
             <p><strong>Outfit:</strong> ${currentRec.outfit_recommendation}</p>
             <p><strong>Why this outfit:</strong> ${currentRec.reasoning}</p>
           </div>
-          
-          ${allOutfitRecommendations.length > 1 ? `
-            <div class="outfit-navigation">
-              <span class="outfit-counter">${currentOutfitIndex + 1} of ${allOutfitRecommendations.length}</span>
-            </div>
-          ` : ''}
         `;
       }
 
