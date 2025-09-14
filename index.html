@@ -30,6 +30,16 @@
         margin-bottom: 40px;
       }
       
+      .logo-link {
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.3s ease;
+      }
+      
+      .logo-link:hover {
+        transform: scale(1.02);
+      }
+      
       .logo {
         display: flex;
         align-items: center;
@@ -363,11 +373,17 @@
       }
       
       .clear-filters-btn:hover {
-        background: rgba(218, 222, 216, 0.2);
-        color: #daded8;
-        border-color: rgba(218, 222, 216, 0.4);
+        background: rgba(76, 136, 76, 0.2);
+        color: #4c884c;
+        border-color: rgba(76, 136, 76, 0.4);
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 12px rgba(76, 136, 76, 0.2);
+      }
+      
+      .clear-filters-btn:active {
+        color: #3a6b3a;
+        background: rgba(76, 136, 76, 0.3);
+        transform: translateY(0);
       }
       
       .filters-row {
@@ -414,6 +430,118 @@
         border-color: #daded8;
         background: rgba(44, 52, 36, 0.9);
         box-shadow: 0 0 0 3px rgba(218, 222, 216, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      
+      /* Multi-select styling */
+      .multi-select-container {
+        position: relative;
+        width: 100%;
+      }
+      
+      .multi-select-display {
+        background: rgba(44, 52, 36, 0.7);
+        backdrop-filter: blur(5px);
+        border: 1px solid rgba(218, 222, 216, 0.2);
+        color: #daded8;
+        padding: 10px 16px;
+        border-radius: 10px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        position: relative;
+        min-height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      
+      .multi-select-display::after {
+        content: '▼';
+        font-size: 10px;
+        color: rgba(218, 222, 216, 0.6);
+        transition: transform 0.3s ease;
+      }
+      
+      .multi-select-display.open::after {
+        transform: rotate(180deg);
+      }
+      
+      .multi-select-display:hover {
+        border-color: rgba(218, 222, 216, 0.4);
+        background: rgba(44, 52, 36, 0.8);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      
+      .multi-select-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: rgba(44, 52, 36, 0.95);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(218, 222, 216, 0.2);
+        border-radius: 10px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        max-height: 200px;
+        overflow-y: auto;
+        display: none;
+        margin-top: 4px;
+      }
+      
+      .multi-select-dropdown.show {
+        display: block;
+        animation: fadeInDown 0.3s ease;
+      }
+      
+      @keyframes fadeInDown {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      .multi-select-option {
+        padding: 10px 16px;
+        color: #daded8;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-bottom: 1px solid rgba(218, 222, 216, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .multi-select-option:last-child {
+        border-bottom: none;
+      }
+      
+      .multi-select-option:hover {
+        background: rgba(218, 222, 216, 0.1);
+        color: #daded8;
+      }
+      
+      .multi-select-option.selected {
+        background: rgba(76, 136, 76, 0.2);
+        color: #4c884c;
+        font-weight: 500;
+      }
+      
+      .multi-select-option::before {
+        content: '☐';
+        font-size: 12px;
+        color: rgba(218, 222, 216, 0.6);
+      }
+      
+      .multi-select-option.selected::before {
+        content: '☑';
+        color: #4c884c;
       }
       
       .results-header {
@@ -978,10 +1106,12 @@
   <body>
     <div class="wrap">
       <header class="header">
-        <div class="logo">
-          <img src="./shezaar-logo.png" alt="Shezaar" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-          <div class="logo-text" style="display: none;">SHEZAAR</div>
-        </div>
+        <a href="https://www.shezaar.com" target="_blank" rel="noopener" class="logo-link">
+          <div class="logo">
+            <img src="./shezaar-logo.png" alt="Shezaar" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <div class="logo-text" style="display: none;">SHEZAAR</div>
+          </div>
+        </a>
       </header>
       
       <div class="card">
@@ -1003,28 +1133,36 @@
           <div class="filters-row">
             <div class="filter-group">
               <label>Day</label>
-              <select id="day-filter" class="filter-select">
-                <option value="">All Days</option>
-                <option value="Monday">Monday</option>
-                <option value="Tuesday">Tuesday</option>
-                <option value="Wednesday">Wednesday</option>
-                <option value="Thursday">Thursday</option>
-                <option value="Friday">Friday</option>
-                <option value="Saturday">Saturday</option>
-                <option value="Sunday">Sunday</option>
-              </select>
+              <div class="multi-select-container">
+                <div class="multi-select-display" id="day-display">All Days</div>
+                <div class="multi-select-dropdown" id="day-dropdown">
+                  <div class="multi-select-option" data-value="Monday">Monday</div>
+                  <div class="multi-select-option" data-value="Tuesday">Tuesday</div>
+                  <div class="multi-select-option" data-value="Wednesday">Wednesday</div>
+                  <div class="multi-select-option" data-value="Thursday">Thursday</div>
+                  <div class="multi-select-option" data-value="Friday">Friday</div>
+                  <div class="multi-select-option" data-value="Saturday">Saturday</div>
+                  <div class="multi-select-option" data-value="Sunday">Sunday</div>
+                </div>
+              </div>
             </div>
             <div class="filter-group">
               <label>Location</label>
-              <select id="location-filter" class="filter-select">
-                <option value="">All Locations</option>
-              </select>
+              <div class="multi-select-container">
+                <div class="multi-select-display" id="location-display">All Locations</div>
+                <div class="multi-select-dropdown" id="location-dropdown">
+                  <!-- Options will be populated by JavaScript -->
+                </div>
+              </div>
             </div>
             <div class="filter-group">
               <label>Topic</label>
-              <select id="topic-filter" class="filter-select">
-                <option value="">All Topics</option>
-              </select>
+              <div class="multi-select-container">
+                <div class="multi-select-display" id="topic-display">All Topics</div>
+                <div class="multi-select-dropdown" id="topic-dropdown">
+                  <!-- Options will be populated by JavaScript -->
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1109,9 +1247,12 @@
       const out = $('out');
       const filtersEl = $('filters');
       const eventsEl = $('events');
-      const dayFilter = $('day-filter');
-      const locationFilter = $('location-filter');
-      const topicFilter = $('topic-filter');
+      const dayDisplay = $('day-display');
+      const dayDropdown = $('day-dropdown');
+      const locationDisplay = $('location-display');
+      const locationDropdown = $('location-dropdown');
+      const topicDisplay = $('topic-display');
+      const topicDropdown = $('topic-dropdown');
       const sortSelect = $('sort-select');
       const clearFiltersBtn = $('clear-filters');
       const aiReasoningEl = $('ai-reasoning');
@@ -1163,6 +1304,9 @@
       let allEvents = [];
       let filteredEvents = [];
       let aiReasoning = null;
+      let selectedDays = [];
+      let selectedLocations = [];
+      let selectedTopics = [];
 
       // Function to log user interactions to Supabase
       async function logInteraction(type, data) {
@@ -1403,25 +1547,94 @@
       function populateFilters(events) {
         // Populate location filter
         const locations = [...new Set(events.map(e => e.location).filter(Boolean))].sort();
-        locationFilter.innerHTML = '<option value="">All Locations</option>' + 
-          locations.map(loc => `<option value="${loc}">${loc}</option>`).join('');
+        locationDropdown.innerHTML = locations.map(loc => 
+          `<div class="multi-select-option" data-value="${loc}">${loc}</div>`
+        ).join('');
         
         // Populate topic filter from tags
         const topics = [...new Set(events.flatMap(e => e.tags || []).filter(Boolean))].sort();
-        topicFilter.innerHTML = '<option value="">All Topics</option>' + 
-          topics.map(topic => `<option value="${topic}">${topic}</option>`).join('');
+        topicDropdown.innerHTML = topics.map(topic => 
+          `<div class="multi-select-option" data-value="${topic}">${topic}</div>`
+        ).join('');
+      }
+      
+      // Multi-select functionality
+      function initializeMultiSelect(display, dropdown, selectedArray, updateDisplay) {
+        display.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isOpen = dropdown.classList.contains('show');
+          
+          // Close all other dropdowns
+          document.querySelectorAll('.multi-select-dropdown').forEach(dd => {
+            dd.classList.remove('show');
+            dd.previousElementSibling.classList.remove('open');
+          });
+          
+          if (!isOpen) {
+            dropdown.classList.add('show');
+            display.classList.add('open');
+          }
+        });
+        
+        dropdown.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const option = e.target.closest('.multi-select-option');
+          if (option) {
+            const value = option.dataset.value;
+            const index = selectedArray.indexOf(value);
+            
+            if (index > -1) {
+              selectedArray.splice(index, 1);
+              option.classList.remove('selected');
+            } else {
+              selectedArray.push(value);
+              option.classList.add('selected');
+            }
+            
+            updateDisplay();
+            applyFilters();
+          }
+        });
+      }
+      
+      function updateDayDisplay() {
+        if (selectedDays.length === 0) {
+          dayDisplay.textContent = 'All Days';
+        } else if (selectedDays.length === 1) {
+          dayDisplay.textContent = selectedDays[0];
+        } else {
+          dayDisplay.textContent = `${selectedDays.length} days selected`;
+        }
+      }
+      
+      function updateLocationDisplay() {
+        if (selectedLocations.length === 0) {
+          locationDisplay.textContent = 'All Locations';
+        } else if (selectedLocations.length === 1) {
+          locationDisplay.textContent = selectedLocations[0];
+        } else {
+          locationDisplay.textContent = `${selectedLocations.length} locations selected`;
+        }
+      }
+      
+      function updateTopicDisplay() {
+        if (selectedTopics.length === 0) {
+          topicDisplay.textContent = 'All Topics';
+        } else if (selectedTopics.length === 1) {
+          topicDisplay.textContent = selectedTopics[0];
+        } else {
+          topicDisplay.textContent = `${selectedTopics.length} topics selected`;
+        }
       }
       
       function applyFilters() {
-        const dayFilterValue = dayFilter.value;
-        const locationFilterValue = locationFilter.value;
-        const topicFilterValue = topicFilter.value;
-        
         filteredEvents = allEvents.filter(event => {
-          const dayMatch = !dayFilterValue || event.date?.includes(dayFilterValue) || 
-                          getDayFromDate(event.date) === dayFilterValue;
-          const locationMatch = !locationFilterValue || event.location === locationFilterValue;
-          const topicMatch = !topicFilterValue || (event.tags && event.tags.includes(topicFilterValue));
+          const dayMatch = selectedDays.length === 0 || 
+                          selectedDays.some(day => event.date?.includes(day) || getDayFromDate(event.date) === day);
+          const locationMatch = selectedLocations.length === 0 || 
+                               selectedLocations.includes(event.location);
+          const topicMatch = selectedTopics.length === 0 || 
+                            (event.tags && selectedTopics.some(topic => event.tags.includes(topic)));
           
           return dayMatch && locationMatch && topicMatch;
         });
@@ -1494,10 +1707,32 @@
       }
       
       async function clearFilters() {
-        dayFilter.value = '';
-        locationFilter.value = '';
-        topicFilter.value = '';
+        // Clear selected filters
+        selectedDays = [];
+        selectedLocations = [];
+        selectedTopics = [];
+        
+        // Clear query input
+        input.value = '';
+        
+        // Reset sort
         sortSelect.value = 'relevance';
+        
+        // Clear multi-select displays
+        updateDayDisplay();
+        updateLocationDisplay();
+        updateTopicDisplay();
+        
+        // Clear selected states in dropdowns
+        document.querySelectorAll('.multi-select-option').forEach(option => {
+          option.classList.remove('selected');
+        });
+        
+        // Close all dropdowns
+        document.querySelectorAll('.multi-select-dropdown').forEach(dd => {
+          dd.classList.remove('show');
+          dd.previousElementSibling.classList.remove('open');
+        });
         
         // Fetch all events from database
         try {
@@ -1596,10 +1831,22 @@
         }
       });
       
+      // Initialize multi-select components
+      initializeMultiSelect(dayDisplay, dayDropdown, selectedDays, updateDayDisplay);
+      initializeMultiSelect(locationDisplay, locationDropdown, selectedLocations, updateLocationDisplay);
+      initializeMultiSelect(topicDisplay, topicDropdown, selectedTopics, updateTopicDisplay);
+      
+      // Close dropdowns when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.multi-select-container')) {
+          document.querySelectorAll('.multi-select-dropdown').forEach(dd => {
+            dd.classList.remove('show');
+            dd.previousElementSibling.classList.remove('open');
+          });
+        }
+      });
+      
       // Filter and sort event listeners
-      dayFilter.addEventListener('change', applyFilters);
-      locationFilter.addEventListener('change', applyFilters);
-      topicFilter.addEventListener('change', applyFilters);
       sortSelect.addEventListener('change', sortEvents);
       clearFiltersBtn.addEventListener('click', clearFilters);
     </script>
