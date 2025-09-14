@@ -439,39 +439,47 @@
       }
       
       .multi-select-display {
-        background: rgba(44, 52, 36, 0.7);
-        backdrop-filter: blur(5px);
-        border: 1px solid rgba(218, 222, 216, 0.2);
+        background: rgba(44, 52, 36, 0.8);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(218, 222, 216, 0.25);
         color: #daded8;
-        padding: 10px 16px;
+        padding: 14px 18px;
         border-radius: 10px;
         font-size: 14px;
         cursor: pointer;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         position: relative;
-        min-height: 20px;
+        min-height: 24px;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        font-weight: 500;
       }
       
       .multi-select-display::after {
         content: '▼';
-        font-size: 10px;
-        color: rgba(218, 222, 216, 0.6);
-        transition: transform 0.3s ease;
+        font-size: 12px;
+        color: rgba(218, 222, 216, 0.7);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-weight: bold;
       }
       
       .multi-select-display.open::after {
         transform: rotate(180deg);
+        color: #daded8;
       }
       
       .multi-select-display:hover {
-        border-color: rgba(218, 222, 216, 0.4);
-        background: rgba(44, 52, 36, 0.8);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        border-color: rgba(218, 222, 216, 0.5);
+        background: rgba(44, 52, 36, 0.9);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+      }
+      
+      .multi-select-display:hover::after {
+        color: #daded8;
+        transform: scale(1.1);
       }
       
       .multi-select-dropdown {
@@ -479,16 +487,36 @@
         top: 100%;
         left: 0;
         right: 0;
-        background: rgba(44, 52, 36, 0.95);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(218, 222, 216, 0.2);
-        border-radius: 10px;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        background: rgba(44, 52, 36, 0.98);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(218, 222, 216, 0.25);
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(218, 222, 216, 0.1);
         z-index: 1000;
-        max-height: 200px;
+        max-height: 280px;
         overflow-y: auto;
         display: none;
-        margin-top: 4px;
+        margin-top: 8px;
+        padding: 8px 0;
+      }
+      
+      .multi-select-dropdown::-webkit-scrollbar {
+        width: 6px;
+      }
+      
+      .multi-select-dropdown::-webkit-scrollbar-track {
+        background: rgba(218, 222, 216, 0.1);
+        border-radius: 3px;
+      }
+      
+      .multi-select-dropdown::-webkit-scrollbar-thumb {
+        background: rgba(218, 222, 216, 0.3);
+        border-radius: 3px;
+        transition: background 0.3s ease;
+      }
+      
+      .multi-select-dropdown::-webkit-scrollbar-thumb:hover {
+        background: rgba(218, 222, 216, 0.5);
       }
       
       .multi-select-dropdown.show {
@@ -508,14 +536,19 @@
       }
       
       .multi-select-option {
-        padding: 10px 16px;
+        padding: 16px 20px;
         color: #daded8;
         cursor: pointer;
-        transition: all 0.2s ease;
-        border-bottom: 1px solid rgba(218, 222, 216, 0.1);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-bottom: 1px solid rgba(218, 222, 216, 0.08);
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 12px;
+        font-size: 14px;
+        position: relative;
+        border-radius: 8px;
+        margin: 4px 8px;
+        min-height: 48px;
       }
       
       .multi-select-option:last-child {
@@ -523,25 +556,52 @@
       }
       
       .multi-select-option:hover {
-        background: rgba(218, 222, 216, 0.1);
+        background: rgba(218, 222, 216, 0.15);
         color: #daded8;
+        transform: translateX(4px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       }
       
       .multi-select-option.selected {
-        background: rgba(76, 136, 76, 0.2);
-        color: #4c884c;
-        font-weight: 500;
+        background: #daded8;
+        color: #2c3424;
+        font-weight: 600;
+        transform: translateX(6px);
+        box-shadow: 0 4px 12px rgba(218, 222, 216, 0.3);
       }
       
       .multi-select-option::before {
         content: '☐';
-        font-size: 12px;
-        color: rgba(218, 222, 216, 0.6);
+        font-size: 18px;
+        color: rgba(218, 222, 216, 0.7);
+        transition: all 0.3s ease;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid rgba(218, 222, 216, 0.3);
+        border-radius: 4px;
+        background: transparent;
       }
       
       .multi-select-option.selected::before {
-        content: '☑';
-        color: #4c884c;
+        content: '✓';
+        color: #2c3424;
+        background: #2c3424;
+        border-color: #2c3424;
+        font-weight: bold;
+        font-size: 14px;
+      }
+      
+      .multi-select-option:hover::before {
+        border-color: rgba(218, 222, 216, 0.8);
+        transform: scale(1.1);
+      }
+      
+      .multi-select-option.selected:hover::before {
+        transform: scale(1.1);
+        box-shadow: 0 0 0 2px rgba(44, 52, 36, 0.2);
       }
       
       .results-header {
@@ -706,7 +766,7 @@
         border: none;
         padding: 14px 24px;
         border-radius: 50px;
-        cursor: pointer;
+        cursor: pointer !important;
         font-size: 14px;
         font-weight: 600;
         box-shadow: 0 8px 25px rgba(218, 222, 216, 0.4), 0 0 0 1px rgba(218, 222, 216, 0.1);
@@ -718,6 +778,7 @@
         max-width: calc(100vw - 40px);
         box-sizing: border-box;
         transform: none !important;
+        pointer-events: auto !important;
       }
       
       .floating-outfit-btn::before {
@@ -1344,6 +1405,8 @@
           outfitBtn.style.bottom = '20px';
           outfitBtn.style.right = '20px';
           outfitBtn.style.zIndex = '1000';
+          outfitBtn.style.pointerEvents = 'auto';
+          outfitBtn.disabled = false; // Ensure button is not disabled
           
           // Adjust for mobile screens
           if (window.innerWidth <= 768) {
@@ -1424,6 +1487,7 @@
             renderAIReasoning();
             // Show floating outfit button
             outfitBtn.hidden = false;
+            outfitBtn.disabled = false; // Ensure button is enabled
             ensureFloatingButtonVisibility();
           } else {
             eventsEl.innerHTML = `
@@ -1869,22 +1933,18 @@
               <strong>🧠 Overall Analysis:</strong> ${aiReasoning.overall || 'No overall reasoning provided'}
             </div>
             ${relevanceSection}
-            <div class="event-specific-reasoning">
-              <strong>📋 Event-Specific Reasoning:</strong>
-              ${aiReasoning.events && aiReasoning.events.length > 0 ? aiReasoning.events.map(event => 
-                `<div class="event-reason">
-                  <div class="event-name"><strong>${event.name}</strong></div>
-                  <div class="event-explanation">${event.reason}</div>
-                </div>`
-              ).join('') : 'No event-specific reasoning provided'}
-            </div>
           </div>
         `;
         aiReasoningEl.hidden = false;
       }
 
       btn.addEventListener('click', recommend);
-      outfitBtn.addEventListener('click', recommendOutfit);
+      outfitBtn.addEventListener('click', (e) => {
+        console.log('Outfit button clicked!', e);
+        console.log('Button disabled?', outfitBtn.disabled);
+        console.log('Button hidden?', outfitBtn.hidden);
+        recommendOutfit();
+      });
       input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) recommend(); });
       
       // Gender selection event listeners
