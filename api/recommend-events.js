@@ -467,6 +467,14 @@ async function filterEvents(supabase, context, limit = 100) {
     
     console.log(`✅ Found ${data?.length || 0} events from database`);
     
+    // Debug: Show some sample events with their usage tags
+    if (data && data.length > 0) {
+      console.log('📋 Sample events with usage tags:');
+      data.slice(0, 5).forEach((event, index) => {
+        console.log(`${index + 1}. ${event.event_name} - Usage tags: ${event.usage_tags ? event.usage_tags.join(', ') : 'None'}`);
+      });
+    }
+    
     if (!data || data.length === 0) {
       return [];
     }
@@ -474,14 +482,55 @@ async function filterEvents(supabase, context, limit = 100) {
     // Apply broad filtering based on context
     let filteredEvents = data;
 
-    // Filter by usage tags (goals) - most important filter, be strict
+    // Filter by usage tags (goals) - be more lenient, only filter if we have many results
     if (context.goals && context.goals.length > 0) {
       const beforeFilter = filteredEvents.length;
-      filteredEvents = filteredEvents.filter(event => {
+      
+      // First try strict filtering
+      const strictFiltered = filteredEvents.filter(event => {
         const eventUsageTags = event.usage_tags || [];
         return context.goals.some(goal => eventUsageTags.includes(goal));
       });
-      console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on goals`);
+      
+      // If strict filtering gives us results, use it
+      if (strictFiltered.length > 0) {
+        filteredEvents = strictFiltered;
+        console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on goals (strict filtering)`);
+      } else {
+        // If no results, try more lenient filtering based on event content
+        const lenientFiltered = filteredEvents.filter(event => {
+          const eventDescription = (event.event_description || '').toLowerCase();
+          const eventName = (event.event_name || '').toLowerCase();
+          const allText = `${eventName} ${eventDescription}`;
+          
+          // Look for cofounder-related keywords in the content
+          if (context.goals.includes('find-cofounder')) {
+            const cofounderKeywords = ['co-founder', 'cofounder', 'co founder', 'founder', 'startup', 'entrepreneur', 'partnership', 'collaboration'];
+            return cofounderKeywords.some(keyword => allText.includes(keyword));
+          }
+          
+          // Look for investor-related keywords
+          if (context.goals.includes('find-investors') || context.goals.includes('find-angels')) {
+            const investorKeywords = ['investor', 'angel', 'vc', 'funding', 'capital', 'investment', 'pitch', 'demo day'];
+            return investorKeywords.some(keyword => allText.includes(keyword));
+          }
+          
+          // Look for talent-related keywords
+          if (context.goals.includes('find-talent')) {
+            const talentKeywords = ['hiring', 'talent', 'engineer', 'developer', 'recruit', 'job', 'career'];
+            return talentKeywords.some(keyword => allText.includes(keyword));
+          }
+          
+          return false;
+        });
+        
+        if (lenientFiltered.length > 0) {
+          filteredEvents = lenientFiltered;
+          console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on goals (lenient filtering)`);
+        } else {
+          console.log(`⚠️ No events found matching goals, keeping all ${beforeFilter} events for ranking`);
+        }
+      }
     }
 
     // Industry filtering is now handled by ranking, not filtering
@@ -803,6 +852,13 @@ module.exports = async (req, res) => {
     console.log('🔧 Step 1: Extracting user context...');
     const context = await extractUserContext(message, openai);
     console.log('✅ Extracted context:', JSON.stringify(context, null, 2));
+    
+    // Debug: Check if goals were extracted
+    if (context.goals && context.goals.length > 0) {
+      console.log('🎯 Goals extracted:', context.goals);
+    } else {
+      console.log('⚠️ No goals extracted from query');
+    }
 
     // Step 2: Filter events based on context
     console.log('🔧 Step 2: Filtering events based on context...');
