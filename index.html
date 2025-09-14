@@ -336,40 +336,20 @@
         margin-top: 16px;
       }
       
-      .filters-container {
-        background: rgba(76, 88, 62, 0.25);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(218, 222, 216, 0.15);
-        border-radius: 16px;
-        padding: 24px;
-        margin-bottom: 28px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(218, 222, 216, 0.1);
-      }
-      
-      .filters-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 16px;
-      }
-      
-      .filters-header h3 {
-        margin: 0;
-        font-size: 18px;
-        color: #daded8;
-      }
       
       .clear-filters-btn {
         background: rgba(218, 222, 216, 0.1);
         color: rgba(218, 222, 216, 0.9);
         border: 1px solid rgba(218, 222, 216, 0.25);
-        padding: 8px 16px;
+        padding: 12px 20px;
         border-radius: 8px;
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 500;
         cursor: pointer;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         backdrop-filter: blur(5px);
+        height: fit-content;
+        align-self: flex-end;
       }
       
       .clear-filters-btn:hover {
@@ -390,6 +370,9 @@
         display: flex;
         gap: 20px;
         flex-wrap: wrap;
+        align-items: flex-end;
+        margin-bottom: 28px;
+        padding: 20px 0;
       }
       
       .filter-group {
@@ -1316,55 +1299,50 @@
       </div>
 
       <div id="out" class="card results" hidden>
-        <div class="filters-container" id="filters" hidden>
-          <div class="filters-header">
-            <h3>Filters</h3>
-            <button id="clear-filters" class="clear-filters-btn">Clear All</button>
-          </div>
-          <div class="filters-row">
-            <div class="filter-group">
-              <label>Day</label>
-              <div class="multi-select-container">
-                <div class="multi-select-display" id="day-display">All Days</div>
-                <div class="multi-select-dropdown" id="day-dropdown">
-                  <div class="multi-select-option" data-value="Monday">Monday</div>
-                  <div class="multi-select-option" data-value="Tuesday">Tuesday</div>
-                  <div class="multi-select-option" data-value="Wednesday">Wednesday</div>
-                  <div class="multi-select-option" data-value="Thursday">Thursday</div>
-                  <div class="multi-select-option" data-value="Friday">Friday</div>
-                  <div class="multi-select-option" data-value="Saturday">Saturday</div>
-                  <div class="multi-select-option" data-value="Sunday">Sunday</div>
-                </div>
-              </div>
-            </div>
-            <div class="filter-group">
-              <label>Location</label>
-              <div class="multi-select-container">
-                <div class="multi-select-display" id="location-display">All Locations</div>
-                <div class="multi-select-dropdown" id="location-dropdown">
-                  <!-- Options will be populated by JavaScript -->
-                </div>
-              </div>
-            </div>
-            <div class="filter-group">
-              <label>Industry</label>
-              <div class="multi-select-container">
-                <div class="multi-select-display" id="industry-display">All Industries</div>
-                <div class="multi-select-dropdown" id="industry-dropdown">
-                  <!-- Options will be populated by JavaScript -->
-                </div>
-              </div>
-            </div>
-            <div class="filter-group">
-              <label>Type</label>
-              <div class="multi-select-container">
-                <div class="multi-select-display" id="type-display">All Types</div>
-                <div class="multi-select-dropdown" id="type-dropdown">
-                  <!-- Options will be populated by JavaScript -->
-                </div>
+        <div class="filters-row" id="filters" hidden>
+          <div class="filter-group">
+            <label>Day</label>
+            <div class="multi-select-container">
+              <div class="multi-select-display" id="day-display">All Days</div>
+              <div class="multi-select-dropdown" id="day-dropdown">
+                <div class="multi-select-option" data-value="Monday">Monday</div>
+                <div class="multi-select-option" data-value="Tuesday">Tuesday</div>
+                <div class="multi-select-option" data-value="Wednesday">Wednesday</div>
+                <div class="multi-select-option" data-value="Thursday">Thursday</div>
+                <div class="multi-select-option" data-value="Friday">Friday</div>
+                <div class="multi-select-option" data-value="Saturday">Saturday</div>
+                <div class="multi-select-option" data-value="Sunday">Sunday</div>
               </div>
             </div>
           </div>
+          <div class="filter-group">
+            <label>Location</label>
+            <div class="multi-select-container">
+              <div class="multi-select-display" id="location-display">All Locations</div>
+              <div class="multi-select-dropdown" id="location-dropdown">
+                <!-- Options will be populated by JavaScript -->
+              </div>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Industry</label>
+            <div class="multi-select-container">
+              <div class="multi-select-display" id="industry-display">All Industries</div>
+              <div class="multi-select-dropdown" id="industry-dropdown">
+                <!-- Options will be populated by JavaScript -->
+              </div>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Type</label>
+            <div class="multi-select-container">
+              <div class="multi-select-display" id="type-display">All Types</div>
+              <div class="multi-select-dropdown" id="type-dropdown">
+                <!-- Options will be populated by JavaScript -->
+              </div>
+            </div>
+          </div>
+          <button id="clear-filters" class="clear-filters-btn">Clear All</button>
         </div>
         
         <div class="results-header">
@@ -1805,6 +1783,12 @@
           `<div class="multi-select-option" data-value="${loc}">${loc}</div>`
         ).join('');
         
+        // Restore selected states for location filter
+        selectedLocations.forEach(loc => {
+          const option = locationDropdown.querySelector(`[data-value="${loc}"]`);
+          if (option) option.classList.add('selected');
+        });
+        
         // Populate industry filter from centralized config
         const industryTags = [
           'ai-ml', 'fintech', 'healthtech', 'edtech', 'cybersecurity',
@@ -1821,6 +1805,12 @@
           return `<div class="multi-select-option" data-value="${industry}">${displayName}</div>`;
         }).join('');
         
+        // Restore selected states for industry filter
+        selectedIndustries.forEach(industry => {
+          const option = industryDropdown.querySelector(`[data-value="${industry}"]`);
+          if (option) option.classList.add('selected');
+        });
+        
         // Populate type filter from centralized usage tags
         const typeTags = [
           'find-cofounder', 'find-investors', 'find-angels', 'find-talent', 'find-customers',
@@ -1834,6 +1824,12 @@
           ).join(' ');
           return `<div class="multi-select-option" data-value="${type}">${displayName}</div>`;
         }).join('');
+        
+        // Restore selected states for type filter
+        selectedTypes.forEach(type => {
+          const option = typeDropdown.querySelector(`[data-value="${type}"]`);
+          if (option) option.classList.add('selected');
+        });
       }
       
       // Multi-select functionality
@@ -1854,6 +1850,7 @@
           }
         });
         
+        // Use event delegation - attach to dropdown container instead of individual options
         dropdown.addEventListener('click', (e) => {
           e.stopPropagation();
           const option = e.target.closest('.multi-select-option');
@@ -1873,6 +1870,10 @@
             applyFilters();
           }
         });
+        
+        // Store the selected array and update function for later use when content changes
+        dropdown._selectedArray = selectedArray;
+        dropdown._updateDisplay = updateDisplay;
       }
       
       function updateDayDisplay() {
@@ -1923,12 +1924,6 @@
       
       
       function applyFilters() {
-        console.log('applyFilters called');
-        console.log('selectedDays:', selectedDays);
-        console.log('selectedLocations:', selectedLocations);
-        console.log('selectedIndustries:', selectedIndustries);
-        console.log('selectedTypes:', selectedTypes);
-        
         filteredEvents = allEvents.filter(event => {
           const dayMatch = selectedDays.length === 0 || 
                           selectedDays.some(day => event.date?.includes(day) || getDayFromDate(event.date) === day);
@@ -1953,9 +1948,7 @@
       }
       
       function sortEvents() {
-        console.log('sortEvents called');
         const sortBy = sortSelect.value;
-        console.log('Sorting by:', sortBy);
         
         filteredEvents.sort((a, b) => {
           switch (sortBy) {
@@ -2189,39 +2182,10 @@
       });
       
       // Initialize multi-select components
-      console.log('Initializing multi-select components...');
-      console.log('dayDisplay:', dayDisplay, 'dayDropdown:', dayDropdown);
-      console.log('locationDisplay:', locationDisplay, 'locationDropdown:', locationDropdown);
-      console.log('industryDisplay:', industryDisplay, 'industryDropdown:', industryDropdown);
-      console.log('typeDisplay:', typeDisplay, 'typeDropdown:', typeDropdown);
-      
-      if (dayDisplay && dayDropdown) {
-        initializeMultiSelect(dayDisplay, dayDropdown, selectedDays, updateDayDisplay);
-        console.log('Day filter initialized');
-      } else {
-        console.error('Day filter elements not found!');
-      }
-      
-      if (locationDisplay && locationDropdown) {
-        initializeMultiSelect(locationDisplay, locationDropdown, selectedLocations, updateLocationDisplay);
-        console.log('Location filter initialized');
-      } else {
-        console.error('Location filter elements not found!');
-      }
-      
-      if (industryDisplay && industryDropdown) {
-        initializeMultiSelect(industryDisplay, industryDropdown, selectedIndustries, updateIndustryDisplay);
-        console.log('Industry filter initialized');
-      } else {
-        console.error('Industry filter elements not found!');
-      }
-      
-      if (typeDisplay && typeDropdown) {
-        initializeMultiSelect(typeDisplay, typeDropdown, selectedTypes, updateTypeDisplay);
-        console.log('Type filter initialized');
-      } else {
-        console.error('Type filter elements not found!');
-      }
+      initializeMultiSelect(dayDisplay, dayDropdown, selectedDays, updateDayDisplay);
+      initializeMultiSelect(locationDisplay, locationDropdown, selectedLocations, updateLocationDisplay);
+      initializeMultiSelect(industryDisplay, industryDropdown, selectedIndustries, updateIndustryDisplay);
+      initializeMultiSelect(typeDisplay, typeDropdown, selectedTypes, updateTypeDisplay);
       
       // Close dropdowns when clicking outside
       document.addEventListener('click', (e) => {
@@ -2234,23 +2198,8 @@
       });
       
       // Filter and sort event listeners
-      console.log('Setting up event listeners...');
-      console.log('sortSelect:', sortSelect);
-      console.log('clearFiltersBtn:', clearFiltersBtn);
-      
-      if (sortSelect) {
-        sortSelect.addEventListener('change', sortEvents);
-        console.log('Sort event listener attached');
-      } else {
-        console.error('sortSelect element not found!');
-      }
-      
-      if (clearFiltersBtn) {
-        clearFiltersBtn.addEventListener('click', clearFilters);
-        console.log('Clear filters event listener attached');
-      } else {
-        console.error('clearFiltersBtn element not found!');
-      }
+      sortSelect.addEventListener('change', sortEvents);
+      clearFiltersBtn.addEventListener('click', clearFilters);
     </script>
   </body>
   </html>
