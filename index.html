@@ -566,7 +566,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        border: 2px solid transparent;
+        border: 2px solid #ffffff;
         border-radius: 3px;
         background: transparent;
         flex-shrink: 0;
@@ -751,49 +751,21 @@
         position: fixed !important;
         bottom: 20px !important;
         right: 20px !important;
-        background: linear-gradient(135deg, #daded8 0%, #c4d0c4 100%);
-        color: #2c3424;
-        border: none;
-        padding: 14px 24px;
-        border-radius: 50px;
-        cursor: pointer !important;
-        font-size: 14px;
-        font-weight: 600;
-        box-shadow: 0 8px 25px rgba(218, 222, 216, 0.4), 0 0 0 1px rgba(218, 222, 216, 0.1);
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 50px !important;
+        padding: 14px 24px !important;
         z-index: 1000 !important;
         animation: floatIn 0.5s ease-out;
-        overflow: hidden;
-        white-space: nowrap;
         max-width: calc(100vw - 40px);
         box-sizing: border-box;
-        transform: none !important;
         pointer-events: auto !important;
       }
       
-      .floating-outfit-btn::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-        transition: left 0.5s;
-      }
-      
       .floating-outfit-btn:hover {
-        transform: translateY(-4px) scale(1.05);
-        box-shadow: 0 16px 45px rgba(218, 222, 216, 0.5), 0 0 0 1px rgba(218, 222, 216, 0.2);
-        background: linear-gradient(135deg, #e8f0e8 0%, #daded8 100%);
-      }
-      
-      .floating-outfit-btn:hover::before {
-        left: 100%;
+        transform: translateY(-4px) scale(1.05) !important;
       }
       
       .floating-outfit-btn:active {
-        transform: translateY(-2px) scale(1.02);
+        transform: translateY(-2px) scale(1.02) !important;
       }
       
       @keyframes floatIn {
@@ -867,24 +839,15 @@
       }
       
       .modal-close {
-        background: transparent;
-        border: none;
-        color: rgba(218, 222, 216, 0.8);
-        font-size: 24px;
-        cursor: pointer;
-        padding: 8px;
-        border-radius: 8px;
-        transition: all 0.3s ease;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      
-      .modal-close:hover {
-        background: rgba(218, 222, 216, 0.1);
-        color: #daded8;
+        font-size: 24px !important;
+        padding: 8px !important;
+        border-radius: 8px !important;
+        width: 40px !important;
+        height: 40px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-width: 40px !important;
       }
       
       .outfit-recommendation {
@@ -1032,6 +995,100 @@
       }
 
       .modal-btn.underlined:active {
+        text-decoration-color: #daded8;
+      }
+
+      /* Standardized Button Styles */
+      .btn {
+        border: none;
+        padding: 12px 24px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+
+      .btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s;
+      }
+
+      .btn:hover::before {
+        left: 100%;
+      }
+
+      .btn.primary {
+        background: linear-gradient(135deg, #daded8 0%, #c4d0c4 100%);
+        color: #2c3424;
+        box-shadow: 0 6px 20px rgba(218, 222, 216, 0.3), 0 0 0 1px rgba(218, 222, 216, 0.1);
+      }
+
+      .btn.primary:hover {
+        transform: translateY(-2px) scale(1.02);
+        box-shadow: 0 8px 25px rgba(74, 93, 35, 0.4), 0 0 0 1px rgba(74, 93, 35, 0.2);
+        background: linear-gradient(135deg, #daded8 0%, #2c3424 100%);
+        color: #2c3424;
+      }
+
+      .btn.primary:active {
+        transform: translateY(-1px) scale(1.01);
+        background: linear-gradient(135deg, #3a4d13 0%, #5a6c22 100%);
+        color: #daded8;
+        box-shadow: 0 4px 15px rgba(74, 93, 35, 0.5), 0 0 0 1px rgba(74, 93, 35, 0.3);
+      }
+
+      .btn.secondary {
+        background: transparent;
+        color: rgba(218, 222, 216, 0.8);
+        border: 1px solid rgba(218, 222, 216, 0.3);
+        box-shadow: none;
+      }
+
+      .btn.secondary:hover {
+        background: linear-gradient(135deg, #2c3424 0%, #daded8 100%);
+        color: #daded8;
+        border-color: #daded8;
+        transform: translateY(-1px) scale(1.01);
+        box-shadow: 0 4px 15px rgba(74, 93, 35, 0.3);
+      }
+
+      .btn.secondary:active {
+        background: linear-gradient(135deg, #3a4d13 0%, #5a6c22 100%);
+        color: #daded8;
+        border-color: #3a4d13;
+        transform: translateY(0) scale(1);
+        box-shadow: 0 2px 8px rgba(74, 93, 35, 0.4);
+      }
+
+      .btn.tertiary {
+        background: transparent;
+        color: rgba(218, 222, 216, 0.8);
+        text-decoration: underline;
+        text-underline-offset: 4px;
+        text-decoration-color: rgba(218, 222, 216, 0.6);
+        text-decoration-thickness: 2px;
+        box-shadow: none;
+        border: none;
+      }
+
+      .btn.tertiary:hover {
+        background: transparent;
+        color: rgba(218, 222, 216, 0.8);
+        text-decoration: underline;
+        transform: translateY(-2px) scale(1.02);
+      }
+
+      .btn.tertiary:active {
         text-decoration-color: #daded8;
       }
       
@@ -1266,7 +1323,7 @@
         <p class="subtitle">Tell us about your goals and we'll recommend the most relevant events for you. Whether you're looking for investors, co-founders, talent, or just want to network with like-minded people.</p>
         <textarea id="input" placeholder="I am building a wellness tech platform. I want to attend events to meet angels and other co-founders. No preference for time or days."></textarea>
         <div class="row">
-          <button id="go">Find Events</button>
+          <button id="go" class="btn primary">Find Events</button>
           <span id="status" class="status"></span>
         </div>
       </div>
@@ -1315,7 +1372,7 @@
               </div>
             </div>
           </div>
-          <button id="clear-filters" class="clear-filters-btn">Clear All</button>
+          <button id="clear-filters" class="btn secondary">Clear All</button>
         </div>
         
         <div class="results-header">
@@ -1343,7 +1400,7 @@
       </div>
       
       <!-- Floating Outfit Button -->
-      <button id="outfit-btn" class="floating-outfit-btn" hidden>
+      <button id="outfit-btn" class="btn primary floating-outfit-btn" hidden>
         Get Outfit Ideas
       </button>
       
@@ -1352,16 +1409,16 @@
         <div class="modal-content">
           <div class="modal-header">
             <h3 class="modal-title">Outfit Ideas</h3>
-            <button class="modal-close" id="modal-close">&times;</button>
+            <button class="btn secondary modal-close" id="modal-close">&times;</button>
           </div>
           
           <!-- Gender Selection Step -->
           <div id="gender-selection" class="gender-selection">
             <h4>Select your gender to get personalized outfit recommendations:</h4>
             <div class="gender-options">
-              <button class="gender-btn" data-gender="female">Female</button>
-              <button class="gender-btn" data-gender="male">Male</button>
-              <button class="gender-btn" data-gender="prefer-not-to-say">Prefer not to say</button>
+              <button class="btn secondary gender-btn" data-gender="female">Female</button>
+              <button class="btn secondary gender-btn" data-gender="male">Male</button>
+              <button class="btn secondary gender-btn" data-gender="prefer-not-to-say">Prefer not to say</button>
             </div>
           </div>
           
@@ -1377,9 +1434,8 @@
           </div>
           
           <div class="modal-actions">
-            <button class="modal-btn secondary" id="modal-close-btn">Close</button>
-            <button class="modal-btn" id="shop-products-btn" style="display: none;">Shop For Products</button>
-            <button class="modal-btn secondary underlined" id="get-another-outfit" style="display: none;">Another Recommendation</button>
+            <button class="btn primary" id="shop-products-btn" style="display: none;">Shop For Products</button>
+            <button class="btn tertiary" id="get-another-outfit" style="display: none;">Another Recommendation</button>
           </div>
         </div>
       </div>
@@ -1416,7 +1472,6 @@
       const productsContent = $('products-content');
       const productsList = $('products-list');
       const modalClose = $('modal-close');
-      const modalCloseBtn = $('modal-close-btn');
       const getAnotherOutfitBtn = $('get-another-outfit');
       const shopProductsBtn = $('shop-products-btn');
       
@@ -2088,7 +2143,6 @@
       
       // Modal event listeners
       modalClose.addEventListener('click', hideOutfitModal);
-      modalCloseBtn.addEventListener('click', hideOutfitModal);
       getAnotherOutfitBtn.addEventListener('click', () => {
         showNextOutfitRecommendation();
       });
