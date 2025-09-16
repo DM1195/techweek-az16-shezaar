@@ -1531,6 +1531,7 @@
       const typeDropdown = $('type-dropdown');
       const sortSelect = $('sort-select');
       const clearFiltersBtn = $('clear-filters');
+      console.log('clearFiltersBtn found:', clearFiltersBtn);
       const aiReasoningEl = $('ai-reasoning');
       const reasoningContentEl = $('reasoning-content');
       const outfitModal = $('outfit-modal');
@@ -1566,25 +1567,38 @@
 
       // Session tracking functions
       function trackInteraction(type, data) {
+        console.log('trackInteraction called with:', type, data);
         userSession.interactions.push({
           type: type,
           data: data,
           timestamp: Date.now()
         });
         
+        const payload = {
+          sessionId: userSession.sessionId,
+          email: userSession.email,
+          type: type,
+          data: data,
+          timestamp: Date.now(),
+          userAgent: navigator.userAgent
+        };
+        
+        console.log('Sending to API:', payload);
+        
         // Send to analytics endpoint (optional)
         fetch('/api/log-interaction', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: userSession.sessionId,
-            email: userSession.email,
-            type: type,
-            data: data,
-            timestamp: Date.now(),
-            userAgent: navigator.userAgent
-          })
-        }).catch(err => console.log('Analytics tracking failed:', err));
+          body: JSON.stringify(payload)
+        })
+        .then(response => {
+          console.log('API response status:', response.status);
+          return response.json();
+        })
+        .then(result => {
+          console.log('API response data:', result);
+        })
+        .catch(err => console.log('Analytics tracking failed:', err));
       }
 
       function trackQuery(query) {
@@ -1611,8 +1625,10 @@
 
       function handleEmailSubmission() {
         const email = userEmailInput.value.trim();
+        console.log('Email submission attempt:', email);
         if (email && email.includes('@')) {
           userSession.email = email;
+          console.log('Tracking email provided:', email);
           trackInteraction('email_provided', { email: email });
           hideEmailModal();
         } else if (email) {
@@ -1622,6 +1638,7 @@
       }
 
       function handleEmailSkip() {
+        console.log('Email skipped - tracking interaction');
         trackInteraction('email_skipped', {});
         hideEmailModal();
       }
@@ -2205,6 +2222,9 @@
       
       function clearFilters() {
         console.log('clearFilters called');
+        console.log('Before clear - selectedDays:', selectedDays);
+        console.log('Before clear - selectedLocations:', selectedLocations);
+        console.log('Before clear - allEvents length:', allEvents.length);
         
         // Clear selected filters
         selectedDays = [];
@@ -2236,12 +2256,18 @@
         });
         
         // Fetch ALL events from database (reset query logic)
+        console.log('Fetching all events from database...');
         fetch('/api/get-events?limit=2000')
-          .then(response => response.json())
+          .then(response => {
+            console.log('Fetch response:', response.status);
+            return response.json();
+          })
           .then(data => {
+            console.log('Fetch data:', data);
             if (data.ok && data.results) {
               allEvents = data.results;
               filteredEvents = [...allEvents];
+              console.log('Updated allEvents length:', allEvents.length);
               populateFilters(allEvents);
               
               // Update results title to show all events
@@ -2374,10 +2400,18 @@
       
       // Filter and sort event listeners
       sortSelect.addEventListener('change', sortEvents);
-      clearFiltersBtn.addEventListener('click', () => {
-        trackButtonClick('clear-filters', 'Clear All');
-        clearFilters();
-      });
+      
+      // Add Clear All button event listener with error handling
+      if (clearFiltersBtn) {
+        console.log('Adding event listener to Clear All button');
+        clearFiltersBtn.addEventListener('click', () => {
+          console.log('Clear All button clicked!');
+          trackButtonClick('clear-filters', 'Clear All');
+          clearFilters();
+        });
+      } else {
+        console.error('Clear All button not found!');
+      }
     </script>
   </body>
   </html>

@@ -3,6 +3,9 @@ const { getSupabaseClient } = require('./_supabase');
 const INTERACTIONS_TABLE = process.env.INTERACTIONS_TABLE || 'Query List';
 
 module.exports = async (req, res) => {
+  console.log('log-interaction API called with method:', req.method);
+  console.log('Request body:', req.body);
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
@@ -10,28 +13,37 @@ module.exports = async (req, res) => {
   try {
     const { sessionId, email, type, data, timestamp, userAgent } = req.body;
     
+    console.log('Parsed data:', { sessionId, email, type, data, timestamp, userAgent });
+    
     if (!type || !data) {
+      console.log('Missing required fields - type:', type, 'data:', data);
       return res.status(400).json({ ok: false, error: 'Missing required fields' });
     }
 
     const supabase = getSupabaseClient();
     
+    const insertData = {
+      session_id: sessionId,
+      email: email || null,
+      interaction_type: type,
+      data: data,
+      user_agent: userAgent,
+      timestamp: timestamp ? new Date(timestamp).toISOString() : new Date().toISOString()
+    };
+    
+    console.log('Inserting to Supabase:', insertData);
+    console.log('Table name:', INTERACTIONS_TABLE);
+    
     const { error } = await supabase
       .from(INTERACTIONS_TABLE)
-      .insert({
-        session_id: sessionId,
-        email: email || null,
-        interaction_type: type,
-        data: data,
-        user_agent: userAgent,
-        timestamp: timestamp ? new Date(timestamp).toISOString() : new Date().toISOString()
-      });
+      .insert(insertData);
 
     if (error) {
       console.error('Supabase error:', error);
-      return res.status(500).json({ ok: false, error: 'Failed to log interaction' });
+      return res.status(500).json({ ok: false, error: 'Failed to log interaction', details: error.message });
     }
 
+    console.log('Successfully inserted to Supabase');
     res.status(200).json({ ok: true });
   } catch (error) {
     console.error('Error logging interaction:', error);
