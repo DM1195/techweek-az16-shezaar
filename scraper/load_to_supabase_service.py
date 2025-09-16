@@ -170,10 +170,12 @@ def load_events_from_csv(csv_path: str) -> List[Dict[str, Any]]:
                     'event_tags': event_tags,
                     'usage_tags': parse_tags(row.get('usage_tags', '')),
                     'industry_tags': parse_tags(row.get('industry_tags', '')),
+                    'event_type': clean_text(row.get('event_type', '')),
+                    'outfit_category': clean_text(row.get('outfit_category', '')),
                     'women_specific': parse_boolean(row.get('women_specific', '')),
                     'invite_only': parse_boolean(row.get('invite_only', '')),
                     'event_name_and_link': clean_text(row.get('event_name_and_link', '')),
-                    'event_category': generate_event_category(event_name, event_description, event_tags)
+                    'updated_at': clean_text(row.get('updated_at', ''))
                 }
                 
                 # Skip events with empty names
@@ -248,11 +250,14 @@ def verify_upload(supabase: Client, sample_size: int = 5) -> None:
                 print(f"   Date: {event.get('event_date', 'N/A')}")
                 print(f"   Time: {event.get('event_time', 'N/A')}")
                 print(f"   Location: {event.get('event_location', 'N/A')}")
-                print(f"   Category: {event.get('event_category', 'N/A')}")
+                # Category not available in current database schema
+                print(f"   Event Type: {event.get('event_type', 'N/A')}")
+                print(f"   Outfit Category: {event.get('outfit_category', 'N/A')}")
                 print(f"   Event Tags: {event.get('event_tags', [])}")
                 print(f"   Usage Tags: {event.get('usage_tags', [])}")
                 print(f"   Industry Tags: {event.get('industry_tags', [])}")
                 print(f"   Women Specific: {event.get('women_specific', False)}")
+                print(f"   Updated At: {event.get('updated_at', 'N/A')}")
         else:
             print("❌ No events found in database")
             
@@ -300,18 +305,19 @@ def main():
         # Verify upload
         verify_upload(supabase)
         
-        # Show event category distribution
-        print(f"\n📊 Event Category Distribution:")
+        # Show tag distribution instead of category
+        print(f"\n📊 Tag Distribution:")
         try:
-            response = supabase.table('Event List').select('event_category').execute()
+            response = supabase.table('Event List').select('event_tags,usage_tags,industry_tags').execute()
             if response.data:
-                from collections import Counter
-                categories = [event.get('event_category', 'Unknown') for event in response.data]
-                category_counts = Counter(categories)
-                for category, count in category_counts.most_common():
-                    print(f"   {category}: {count} events")
+                event_tag_count = sum(1 for event in response.data if event.get('event_tags'))
+                usage_tag_count = sum(1 for event in response.data if event.get('usage_tags'))
+                industry_tag_count = sum(1 for event in response.data if event.get('industry_tags'))
+                print(f"   Events with event_tags: {event_tag_count}")
+                print(f"   Events with usage_tags: {usage_tag_count}")
+                print(f"   Events with industry_tags: {industry_tag_count}")
         except Exception as e:
-            print(f"   Could not fetch category distribution: {e}")
+            print(f"   Could not fetch tag distribution: {e}")
         
     except Exception as e:
         print(f"❌ Error: {e}")
