@@ -1,6 +1,6 @@
 const { getSupabaseClient } = require('./_supabase');
 
-const INTERACTIONS_TABLE = process.env.INTERACTIONS_TABLE || '"Query List"';
+const INTERACTIONS_TABLE = process.env.INTERACTIONS_TABLE || 'Query List';
 
 module.exports = async (req, res) => {
   console.log('log-interaction API called with method:', req.method);

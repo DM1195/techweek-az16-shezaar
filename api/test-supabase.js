@@ -12,7 +12,7 @@ module.exports = async (req, res) => {
     // Test 2: Try to query the table structure
     console.log('Testing table access...');
     const { data, error } = await supabase
-      .from('"Query List"')
+      .from('Query List')
       .select('*')
       .limit(1);
     
@@ -41,7 +41,7 @@ module.exports = async (req, res) => {
     };
     
     const { error: insertError } = await supabase
-      .from('"Query List"')
+      .from('Query List')
       .insert(testData);
     
     if (insertError) {
