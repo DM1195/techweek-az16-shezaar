@@ -26,7 +26,7 @@ module.exports = async (req, res) => {
       session_id: sessionId,
       email: email || null,
       interaction_type: type,
-      data: data,
+      data: JSON.stringify(data), // Convert object to JSON string
       user_agent: userAgent,
       timestamp: timestamp ? new Date(timestamp).toISOString() : new Date().toISOString()
     };
