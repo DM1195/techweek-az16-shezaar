@@ -1,6 +1,6 @@
 const { getSupabaseClient } = require('./_supabase');
 
-const INTERACTIONS_TABLE = process.env.INTERACTIONS_TABLE || 'Query List';
+const INTERACTIONS_TABLE = process.env.INTERACTIONS_TABLE || '"Query List"';
 
 module.exports = async (req, res) => {
   console.log('log-interaction API called with method:', req.method);
@@ -40,7 +40,16 @@ module.exports = async (req, res) => {
 
     if (error) {
       console.error('Supabase error:', error);
-      return res.status(500).json({ ok: false, error: 'Failed to log interaction', details: error.message });
+      console.error('Error code:', error.code);
+      console.error('Error details:', error.details);
+      console.error('Error hint:', error.hint);
+      return res.status(500).json({ 
+        ok: false, 
+        error: 'Failed to log interaction', 
+        details: error.message,
+        code: error.code,
+        hint: error.hint
+      });
     }
 
     console.log('Successfully inserted to Supabase');
