@@ -247,15 +247,36 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // No outfit recommendations found in database
+    // No outfit recommendations found in database - generate fallback recommendations for each category
+    const fallbackTabs = eventCategories.map(category => {
+      const fallbackRecommendation = generateOutfitFromStyleAndComfort(category, 'mid', 'mid', gender);
+      return {
+        event_category: category,
+        outfit_recommendation: fallbackRecommendation,
+        reasoning: `This outfit recommendation is tailored for ${category} events based on your preferences.`,
+        style_fit: 'mid',
+        body_comfort: 'mid',
+        count: 1
+      };
+    });
+    
+    const combinedFallbackRecommendation = fallbackTabs.map(rec => 
+      `**${rec.event_category}**: ${rec.outfit_recommendation}`
+    ).join('\n\n');
+    
+    const combinedFallbackReasoning = fallbackTabs.map(rec => 
+      `**${rec.event_category}**: ${rec.reasoning}`
+    ).join('\n\n');
+    
     return res.status(200).json({ 
       ok: true, 
-      recommendation: "No specific outfit recommendations found for your event categories.",
-      reasoning: "We couldn't find outfit recommendations in our database for your selected event categories and preferences.",
+      recommendation: combinedFallbackRecommendation,
+      reasoning: combinedFallbackReasoning,
       eventCategories: eventCategories,
       outfitRecommendations: [],
+      tabs: fallbackTabs, // New tabbed structure
       count: 0,
-      message: "No outfit recommendations found in our database for your event categories."
+      message: `Generated outfit recommendations for your ${eventCategories.length} event categories.`
     });
 
   } catch (error) {

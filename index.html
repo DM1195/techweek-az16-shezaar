@@ -1240,6 +1240,111 @@
         padding: 20px;
       }
 
+      /* Outfit Tabs Styles */
+      .outfit-tabs-container {
+        margin-top: 20px;
+      }
+
+      .outfit-tabs-navigation {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        border-bottom: 1px solid rgba(218, 222, 216, 0.2);
+        padding-bottom: 8px;
+        flex-wrap: wrap;
+      }
+
+      .outfit-tab {
+        background: rgba(218, 222, 216, 0.1);
+        color: rgba(218, 222, 216, 0.8);
+        border: 1px solid rgba(218, 222, 216, 0.2);
+        padding: 10px 16px;
+        border-radius: 8px 8px 0 0;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        white-space: nowrap;
+        min-width: 120px;
+        text-align: center;
+      }
+
+      .outfit-tab::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: rgba(218, 222, 216, 0.1);
+        transition: left 0.5s;
+      }
+
+      .outfit-tab:hover {
+        background: rgba(218, 222, 216, 0.2);
+        border-color: rgba(218, 222, 216, 0.4);
+        color: #daded8;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .outfit-tab:hover::before {
+        left: 100%;
+      }
+
+      .outfit-tab.active {
+        background: rgba(218, 222, 216, 0.2);
+        color: #daded8;
+        border-color: rgba(218, 222, 216, 0.5);
+        border-bottom-color: rgba(76, 88, 62, 0.85);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        font-weight: 600;
+      }
+
+      .outfit-tab.active::before {
+        background: rgba(218, 222, 216, 0.15);
+      }
+
+      .outfit-tabs-content {
+        position: relative;
+        min-height: 200px;
+      }
+
+      .outfit-tab-content {
+        display: none;
+        animation: fadeIn 0.3s ease;
+      }
+
+      .outfit-tab-content.active {
+        display: block;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* Mobile responsiveness for tabs */
+      @media (max-width: 768px) {
+        .outfit-tabs-navigation {
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .outfit-tab {
+          min-width: auto;
+          width: 100%;
+          border-radius: 8px;
+          margin-bottom: 4px;
+        }
+
+        .outfit-tab.active {
+          border-bottom-color: rgba(218, 222, 216, 0.5);
+        }
+      }
+
       @media (max-width: 768px) {
         .wrap { padding: 20px 16px; }
         .card { padding: 24px; }
@@ -1855,6 +1960,7 @@
       function showOutfitRecommendations(data) {
         const eventCategories = data.eventCategories || [];
         const outfitRecommendations = data.outfitRecommendations || [];
+        const tabs = data.tabs || [];
         
         // Store event categories globally for navigation
         window.currentEventCategories = eventCategories;
@@ -1865,10 +1971,17 @@
         getAnotherOutfitBtn.style.display = 'inline-block';
         shopProductsBtn.style.display = 'inline-block';
         
-        // Store all recommendations globally and reset index
-        if (outfitRecommendations.length > 0) {
+        // Use tabs if available, otherwise fall back to outfitRecommendations
+        if (tabs.length > 0) {
+          allOutfitRecommendations = tabs;
+          currentOutfitIndex = 0;
+          // Show tabbed interface
+          showTabbedOutfitRecommendations(tabs, eventCategories);
+        } else if (outfitRecommendations.length > 0) {
           allOutfitRecommendations = outfitRecommendations;
           currentOutfitIndex = 0;
+          // Show the first recommendation (legacy format)
+          showCurrentOutfitRecommendation(eventCategories);
         } else {
           // Create a fallback recommendation object
           allOutfitRecommendations = [{
@@ -1877,10 +1990,55 @@
             reasoning: data.reasoning || ''
           }];
           currentOutfitIndex = 0;
+          showCurrentOutfitRecommendation(eventCategories);
         }
+      }
+
+      function showTabbedOutfitRecommendations(tabs, eventCategories) {
+        if (tabs.length === 0) return;
         
-        // Show the first recommendation
-        showCurrentOutfitRecommendation(eventCategories);
+        // Create tab navigation
+        const tabNavigation = tabs.map((tab, index) => `
+          <button class="outfit-tab ${index === 0 ? 'active' : ''}" data-tab-index="${index}">
+            ${tab.event_category}
+          </button>
+        `).join('');
+        
+        // Create tab content
+        const tabContent = tabs.map((tab, index) => `
+          <div class="outfit-tab-content ${index === 0 ? 'active' : ''}" data-tab-index="${index}">
+            <div class="outfit-recommendation">
+              <p><strong>Outfit:</strong> ${tab.outfit_recommendation}</p>
+              <p><strong>Why this outfit:</strong> ${tab.reasoning}</p>
+            </div>
+          </div>
+        `).join('');
+        
+        outfitContent.innerHTML = `
+          <div class="event-types">
+            <h5>Event Categories for Your Recommended Events:</h5>
+            <div class="tags">
+              ${eventCategories.map(category => `<span class="tag">${category}</span>`).join('')}
+            </div>
+          </div>
+          
+          <div class="outfit-tabs-container">
+            <div class="outfit-tabs-navigation">
+              ${tabNavigation}
+            </div>
+            <div class="outfit-tabs-content">
+              ${tabContent}
+            </div>
+          </div>
+        `;
+        
+        // Add event listeners to tabs
+        outfitContent.querySelectorAll('.outfit-tab').forEach(tab => {
+          tab.addEventListener('click', (e) => {
+            const tabIndex = parseInt(e.target.dataset.tabIndex);
+            switchTab(tabIndex);
+          });
+        });
       }
 
       function showCurrentOutfitRecommendation(eventCategories) {
@@ -1903,14 +2061,37 @@
         `;
       }
 
+      function switchTab(tabIndex) {
+        // Remove active class from all tabs and content
+        outfitContent.querySelectorAll('.outfit-tab').forEach(tab => tab.classList.remove('active'));
+        outfitContent.querySelectorAll('.outfit-tab-content').forEach(content => content.classList.remove('active'));
+        
+        // Add active class to selected tab and content
+        const selectedTab = outfitContent.querySelector(`[data-tab-index="${tabIndex}"]`);
+        const selectedContent = outfitContent.querySelector(`.outfit-tab-content[data-tab-index="${tabIndex}"]`);
+        
+        if (selectedTab) selectedTab.classList.add('active');
+        if (selectedContent) selectedContent.classList.add('active');
+        
+        // Update current index for navigation
+        currentOutfitIndex = tabIndex;
+      }
+
       function showNextOutfitRecommendation() {
         if (allOutfitRecommendations.length <= 1) return;
         
         currentOutfitIndex = (currentOutfitIndex + 1) % allOutfitRecommendations.length;
         
-        // Get event categories from the current data (we'll need to store this globally too)
-        const eventCategories = window.currentEventCategories || [];
-        showCurrentOutfitRecommendation(eventCategories);
+        // Check if we're using tabbed interface
+        const hasTabs = outfitContent.querySelector('.outfit-tabs-container');
+        if (hasTabs) {
+          // Switch to the next tab
+          switchTab(currentOutfitIndex);
+        } else {
+          // Get event categories from the current data (we'll need to store this globally too)
+          const eventCategories = window.currentEventCategories || [];
+          showCurrentOutfitRecommendation(eventCategories);
+        }
       }
       
       async function showProducts() {
