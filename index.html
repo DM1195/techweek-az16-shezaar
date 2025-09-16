@@ -10,7 +10,7 @@
       body { 
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; 
         margin: 0; 
-        background: #2c3424;
+        background: linear-gradient(135deg, #1a1f15 0%, #2c3424 100%);
         color: #daded8; 
         min-height: 100vh;
         line-height: 1.6;
@@ -357,14 +357,14 @@
       
       .clear-filters-btn:hover {
         background: rgba(76, 136, 76, 0.2);
-        color: #4c884c;
+        color: #2c3424;
         border-color: rgba(76, 136, 76, 0.4);
         transform: translateY(-1px);
         box-shadow: 0 4px 12px rgba(76, 136, 76, 0.2);
       }
       
       .clear-filters-btn:active {
-        color: #3a6b3a;
+        color: #2c3424;
         background: rgba(76, 136, 76, 0.3);
         transform: translateY(0);
       }
@@ -1419,7 +1419,7 @@
       </button>
       
       <!-- Email Collection Modal -->
-      <div id="email-modal" class="modal-overlay" style="display: flex;">
+      <div id="email-modal" class="modal-overlay show" style="z-index: 9999;">
         <div class="modal-content" style="max-width: 500px;">
           <div class="modal-header">
             <h3 class="modal-title">Welcome to Tech Week SF!</h3>
@@ -1581,7 +1581,8 @@
             email: userSession.email,
             type: type,
             data: data,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            userAgent: navigator.userAgent
           })
         }).catch(err => console.log('Analytics tracking failed:', err));
       }
@@ -1605,7 +1606,7 @@
 
       // Email modal functions
       function hideEmailModal() {
-        emailModal.style.display = 'none';
+        emailModal.classList.remove('show');
       }
 
       function handleEmailSubmission() {
@@ -2234,24 +2235,43 @@
           dd.previousElementSibling.classList.remove('open');
         });
         
-        // Reset to show all events
-        filteredEvents = [...allEvents];
-        
-        // Update results title to show all events
-        const resultsTitle = $('results-title');
-        if (resultsTitle) {
-          resultsTitle.textContent = 'All Events';
-        }
-        
-        // Hide AI reasoning when showing all events
-        if (aiReasoningEl) {
-          aiReasoningEl.hidden = true;
-        }
-        
-        // Re-render events
-        renderEvents();
-        
-        console.log('clearFilters completed, showing', filteredEvents.length, 'events');
+        // Fetch ALL events from database (reset query logic)
+        fetch('/api/get-events?limit=2000')
+          .then(response => response.json())
+          .then(data => {
+            if (data.ok && data.results) {
+              allEvents = data.results;
+              filteredEvents = [...allEvents];
+              populateFilters(allEvents);
+              
+              // Update results title to show all events
+              const resultsTitle = $('results-title');
+              if (resultsTitle) {
+                resultsTitle.textContent = 'All Events';
+              }
+              
+              // Hide AI reasoning when showing all events
+              if (aiReasoningEl) {
+                aiReasoningEl.hidden = true;
+              }
+              
+              // Re-render events
+              renderEvents();
+              
+              console.log('clearFilters completed, fetched', filteredEvents.length, 'events from database');
+            } else {
+              console.error('Failed to fetch all events:', data.error);
+              // Fallback to current events if fetch fails
+              filteredEvents = [...allEvents];
+              renderEvents();
+            }
+          })
+          .catch(error => {
+            console.error('Error fetching all events:', error);
+            // Fallback to current events if fetch fails
+            filteredEvents = [...allEvents];
+            renderEvents();
+          });
       }
       
       function renderAIReasoning() {
@@ -2354,7 +2374,10 @@
       
       // Filter and sort event listeners
       sortSelect.addEventListener('change', sortEvents);
-      clearFiltersBtn.addEventListener('click', clearFilters);
+      clearFiltersBtn.addEventListener('click', () => {
+        trackButtonClick('clear-filters', 'Clear All');
+        clearFilters();
+      });
     </script>
   </body>
   </html>

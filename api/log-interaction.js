@@ -1,6 +1,6 @@
 const { getSupabaseClient } = require('./_supabase');
 
-const INTERACTIONS_TABLE = process.env.INTERACTIONS_TABLE || 'UserInteractions';
+const INTERACTIONS_TABLE = process.env.INTERACTIONS_TABLE || 'Query List';
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -8,7 +8,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { type, data, timestamp, userAgent } = req.body;
+    const { sessionId, email, type, data, timestamp, userAgent } = req.body;
     
     if (!type || !data) {
       return res.status(400).json({ ok: false, error: 'Missing required fields' });
@@ -19,11 +19,12 @@ module.exports = async (req, res) => {
     const { error } = await supabase
       .from(INTERACTIONS_TABLE)
       .insert({
-        type,
-        data: JSON.stringify(data),
-        timestamp: timestamp || new Date().toISOString(),
+        session_id: sessionId,
+        email: email || null,
+        interaction_type: type,
+        data: data,
         user_agent: userAgent,
-        created_at: new Date().toISOString()
+        timestamp: timestamp ? new Date(timestamp).toISOString() : new Date().toISOString()
       });
 
     if (error) {
