@@ -429,10 +429,11 @@ async function filterEvents(supabase, context, limit = 1000) {
       }
     }
 
-    // Industry filtering is now handled by ranking, not filtering
-    // This ensures usage tags always take priority over industry tags
+    // Industry filtering - filter events based on industry preferences
     if (context.industries && context.industries.length > 0) {
-      console.log(`✅ Industry preferences will be used for ranking, not filtering`);
+      const beforeFilter = filteredEvents.length;
+      console.log(`🔧 Industry filtering: User industries: ${context.industries.join(', ')}`);
+      console.log(`🔧 Industry filtering: Starting with ${beforeFilter} events`);
       
       // Special case: If user has general tech interests (ai, startup, technology, etc.),
       // include events with general tech tags even if they don't have specific industry matches
@@ -443,9 +444,60 @@ async function filterEvents(supabase, context, limit = 1000) {
         )
       );
       
+      console.log(`🔧 Industry filtering: Has general tech interest: ${hasGeneralTechInterest}`);
+      
       if (hasGeneralTechInterest) {
-        console.log(`✅ User has general tech interests - events with general tech tags will be included`);
+        console.log(`✅ User has general tech interests - including events with general tech tags`);
+        // For general tech interests, we'll be more lenient and include events with general tech tags
+        // but still filter for specific industry matches if they exist
+        const specificIndustryFiltered = filteredEvents.filter(event => {
+          const eventIndustryTags = event.industry_tags || [];
+          const eventTags = event.event_tags || [];
+          const allIndustryTags = [...eventIndustryTags, ...eventTags];
+          
+          // Check if event matches any of the user's industry interests
+          return context.industries.some(industry => 
+            allIndustryTags.some(tag => 
+              tag.toLowerCase().includes(industry.toLowerCase()) || 
+              industry.toLowerCase().includes(tag.toLowerCase())
+            )
+          );
+        });
+        
+        // If we found specific matches, use them; otherwise keep all events for general tech ranking
+        if (specificIndustryFiltered.length > 0) {
+          filteredEvents = specificIndustryFiltered;
+          console.log(`✅ Filtered from ${beforeFilter} to ${filteredEvents.length} events based on specific industry matches`);
+        } else {
+          console.log(`✅ No specific industry matches found, keeping all ${beforeFilter} events for general tech ranking`);
+        }
+      } else {
+        console.log(`✅ User has specific industry interests (not general tech) - applying strict filtering`);
+        // For specific industry interests (like fashion-tech), filter strictly
+        const beforeStrictFilter = filteredEvents.length;
+        filteredEvents = filteredEvents.filter(event => {
+          const eventIndustryTags = event.industry_tags || [];
+          const eventTags = event.event_tags || [];
+          const allIndustryTags = [...eventIndustryTags, ...eventTags];
+          
+          // Check if event matches any of the user's industry interests
+          const matches = context.industries.some(industry => 
+            allIndustryTags.some(tag => 
+              tag.toLowerCase().includes(industry.toLowerCase()) || 
+              industry.toLowerCase().includes(tag.toLowerCase())
+            )
+          );
+          
+          if (matches) {
+            console.log(`  ✅ Event "${event.event_name}" matches industry filter`);
+          }
+          
+          return matches;
+        });
+        console.log(`✅ Strict filtering: ${beforeStrictFilter} -> ${filteredEvents.length} events based on industry preferences`);
       }
+    } else {
+      console.log(`⚠️ No industry preferences found in context`);
     }
 
     // Filter by location if specified
