@@ -1404,6 +1404,53 @@
         Get Outfit Ideas
       </button>
       
+      <!-- Email Collection Modal -->
+      <div id="email-modal" class="modal-overlay" style="display: flex;">
+        <div class="modal-content" style="max-width: 500px;">
+          <div class="modal-header">
+            <h3 class="modal-title">Welcome to Tech Week SF!</h3>
+          </div>
+          
+          <div class="email-collection-content">
+            <p style="color: #daded8; margin-bottom: 20px; line-height: 1.6;">
+              To help us improve your experience and provide better recommendations, 
+              please share your email address. We'll use it to track your preferences 
+              and personalize your event discovery.
+            </p>
+            
+            <div class="email-input-group">
+              <input 
+                type="email" 
+                id="user-email" 
+                placeholder="Enter your email address"
+                style="
+                  width: 100%;
+                  padding: 16px 20px;
+                  border: 2px solid rgba(218, 222, 216, 0.3);
+                  border-radius: 8px;
+                  background: rgba(44, 52, 36, 0.8);
+                  color: #daded8;
+                  font-size: 16px;
+                  margin-bottom: 20px;
+                  transition: border-color 0.3s ease;
+                "
+              >
+              <div class="modal-actions" style="justify-content: center;">
+                <button id="skip-email" class="btn tertiary">Skip for now</button>
+                <button id="submit-email" class="btn primary">Continue</button>
+              </div>
+            </div>
+            
+            <p style="color: rgba(218, 222, 216, 0.7); font-size: 12px; text-align: center; margin-top: 20px;">
+              By continuing, you agree to our 
+              <a href="/privacy-policy.html" target="_blank" style="color: #daded8;">Privacy Policy</a> 
+              and 
+              <a href="/terms-of-use.html" target="_blank" style="color: #daded8;">Terms of Use</a>
+            </p>
+          </div>
+        </div>
+      </div>
+
       <!-- Outfit Recommendation Modal -->
       <div id="outfit-modal" class="modal-overlay">
         <div class="modal-content">
@@ -1441,7 +1488,13 @@
       </div>
       
       <footer class="footer">
-        <p>Powered by the minds behind <a href="https://www.shezaar.com" target="_blank" rel="noopener" class="shezaar-link">Shezaar</a></p>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+          <p style="margin: 0;">Powered by the minds behind <a href="https://www.shezaar.com" target="_blank" rel="noopener" class="shezaar-link">Shezaar</a></p>
+          <div style="display: flex; gap: 20px;">
+            <a href="/privacy-policy.html" target="_blank" style="color: rgba(218, 222, 216, 0.8); text-decoration: none; transition: color 0.3s ease;">Privacy Policy</a>
+            <a href="/terms-of-use.html" target="_blank" style="color: rgba(218, 222, 216, 0.8); text-decoration: none; transition: color 0.3s ease;">Terms of Use</a>
+          </div>
+        </div>
       </footer>
     </div>
 
@@ -1475,8 +1528,105 @@
       const getAnotherOutfitBtn = $('get-another-outfit');
       const shopProductsBtn = $('shop-products-btn');
       
+      // Session tracking variables
+      let userSession = {
+        email: null,
+        sessionId: null,
+        startTime: Date.now(),
+        interactions: [],
+        queries: [],
+        buttonClicks: []
+      };
+
+      // Generate session ID
+      userSession.sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+      // Email modal elements
+      const emailModal = $('email-modal');
+      const userEmailInput = $('user-email');
+      const submitEmailBtn = $('submit-email');
+      const skipEmailBtn = $('skip-email');
+
       // Hide floating button initially
       outfitBtn.hidden = true;
+
+      // Session tracking functions
+      function trackInteraction(type, data) {
+        userSession.interactions.push({
+          type: type,
+          data: data,
+          timestamp: Date.now()
+        });
+        
+        // Send to analytics endpoint (optional)
+        fetch('/api/log-interaction', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: userSession.sessionId,
+            email: userSession.email,
+            type: type,
+            data: data,
+            timestamp: Date.now()
+          })
+        }).catch(err => console.log('Analytics tracking failed:', err));
+      }
+
+      function trackQuery(query) {
+        userSession.queries.push({
+          query: query,
+          timestamp: Date.now()
+        });
+        trackInteraction('search_query', { query: query });
+      }
+
+      function trackButtonClick(buttonId, buttonText) {
+        userSession.buttonClicks.push({
+          buttonId: buttonId,
+          buttonText: buttonText,
+          timestamp: Date.now()
+        });
+        trackInteraction('button_click', { buttonId: buttonId, buttonText: buttonText });
+      }
+
+      // Email modal functions
+      function hideEmailModal() {
+        emailModal.style.display = 'none';
+      }
+
+      function handleEmailSubmission() {
+        const email = userEmailInput.value.trim();
+        if (email && email.includes('@')) {
+          userSession.email = email;
+          trackInteraction('email_provided', { email: email });
+          hideEmailModal();
+        } else if (email) {
+          alert('Please enter a valid email address');
+          return;
+        }
+      }
+
+      function handleEmailSkip() {
+        trackInteraction('email_skipped', {});
+        hideEmailModal();
+      }
+
+      // Email modal event listeners
+      submitEmailBtn.addEventListener('click', handleEmailSubmission);
+      skipEmailBtn.addEventListener('click', handleEmailSkip);
+      
+      userEmailInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          handleEmailSubmission();
+        }
+      });
+
+      // Track when user closes email modal by clicking outside
+      emailModal.addEventListener('click', (e) => {
+        if (e.target === emailModal) {
+          handleEmailSkip();
+        }
+      });
       
       // Ensure floating button is always visible and properly positioned
       function ensureFloatingButtonVisibility() {
@@ -1544,6 +1694,10 @@
         // Log the query and button click
         await logInteraction('query', { message });
         await logInteraction('find_events', { message });
+        
+        // Track user session
+        trackQuery(message);
+        trackButtonClick('go', 'Find Events');
         
         btn.disabled = true; status.innerHTML = '<div class="loading"></div> Finding the best events for you...';
         out.hidden = true; eventsEl.innerHTML = ''; filtersEl.hidden = true;
@@ -2125,6 +2279,7 @@
         console.log('Outfit button clicked!', e);
         console.log('Button disabled?', outfitBtn.disabled);
         console.log('Button hidden?', outfitBtn.hidden);
+        trackButtonClick('outfit-btn', 'Get Outfit Ideas');
         recommendOutfit();
       });
       input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) recommend(); });
@@ -2132,6 +2287,7 @@
       // Gender selection event listeners
       document.querySelectorAll('.gender-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
+          trackButtonClick('gender-btn', e.target.dataset.gender);
           // Remove selected class from all buttons
           document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('selected'));
           // Add selected class to clicked button
@@ -2144,9 +2300,13 @@
       // Modal event listeners
       modalClose.addEventListener('click', hideOutfitModal);
       getAnotherOutfitBtn.addEventListener('click', () => {
+        trackButtonClick('get-another-outfit', 'Another Recommendation');
         showNextOutfitRecommendation();
       });
-      shopProductsBtn.addEventListener('click', showProducts);
+      shopProductsBtn.addEventListener('click', () => {
+        trackButtonClick('shop-products-btn', 'Shop For Products');
+        showProducts();
+      });
       
       // Close modal when clicking outside
       outfitModal.addEventListener('click', (e) => {
