@@ -2,12 +2,14 @@
 -- Run these SQL commands in your Supabase SQL editor to create the required tables
 
 -- Table for logging user interactions
-CREATE TABLE IF NOT EXISTS "UserInteractions" (
+CREATE TABLE IF NOT EXISTS "Query List" (
   id SERIAL PRIMARY KEY,
-  type VARCHAR(50) NOT NULL, -- 'query', 'find_events', 'find_outfit'
-  data JSONB NOT NULL, -- Contains the user's message and other relevant data
-  timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
+  session_id TEXT,
+  email TEXT,
+  interaction_type VARCHAR(50) NOT NULL, -- 'email_provided', 'search_query', 'button_click', etc.
+  data JSONB NOT NULL, -- Contains the interaction data
   user_agent TEXT,
+  timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -34,9 +36,11 @@ CREATE TABLE IF NOT EXISTS "Event List" (
 );
 
 -- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_user_interactions_type ON "UserInteractions"(type);
-CREATE INDEX IF NOT EXISTS idx_user_interactions_timestamp ON "UserInteractions"(timestamp);
-CREATE INDEX IF NOT EXISTS idx_user_interactions_created_at ON "UserInteractions"(created_at);
+CREATE INDEX IF NOT EXISTS idx_query_list_interaction_type ON "Query List"(interaction_type);
+CREATE INDEX IF NOT EXISTS idx_query_list_timestamp ON "Query List"(timestamp);
+CREATE INDEX IF NOT EXISTS idx_query_list_created_at ON "Query List"(created_at);
+CREATE INDEX IF NOT EXISTS idx_query_list_session_id ON "Query List"(session_id);
+CREATE INDEX IF NOT EXISTS idx_query_list_email ON "Query List"(email);
 
 -- Indexes for Event List table
 CREATE INDEX IF NOT EXISTS idx_event_list_usage_tags ON "Event List" USING GIN(usage_tags);
@@ -48,13 +52,15 @@ CREATE INDEX IF NOT EXISTS idx_event_list_updated_at ON "Event List"(updated_at)
 -- Optional: Create a view for analytics
 CREATE OR REPLACE VIEW interaction_analytics AS
 SELECT 
-  type,
+  interaction_type as type,
   DATE(created_at) as date,
   COUNT(*) as count,
-  COUNT(DISTINCT user_agent) as unique_users
-FROM "UserInteractions"
-GROUP BY type, DATE(created_at)
-ORDER BY date DESC, type;
+  COUNT(DISTINCT user_agent) as unique_users,
+  COUNT(DISTINCT session_id) as unique_sessions,
+  COUNT(DISTINCT email) as unique_emails
+FROM "Query List"
+GROUP BY interaction_type, DATE(created_at)
+ORDER BY date DESC, interaction_type;
 
 -- Table for outfit recommendations
 CREATE TABLE IF NOT EXISTS "Outfit Recommendations" (
@@ -72,6 +78,6 @@ CREATE INDEX IF NOT EXISTS idx_outfit_recommendations_gender ON "Outfit Recommen
 CREATE INDEX IF NOT EXISTS idx_outfit_recommendations_body_comfort ON "Outfit Recommendations"(body_comfort);
 
 -- Grant necessary permissions (adjust as needed for your setup)
--- GRANT SELECT, INSERT ON "UserInteractions" TO authenticated;
+-- GRANT SELECT, INSERT ON "Query List" TO authenticated;
 -- GRANT SELECT ON "Outfit Recommendations" TO authenticated;
 -- GRANT SELECT ON interaction_analytics TO authenticated;
