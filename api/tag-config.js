@@ -1,70 +1,34 @@
 // Centralized Tag Configuration for SF Tech Week Event Recommendations
 // This file contains all tag definitions, weights, and relationships in one place
 
-// Usage Tags Configuration
+// Usage Tags Configuration - Based on actual CSV data
 const USAGE_TAGS = {
   // Primary Goals (High Priority) - 100 points each
-  'find-cofounder': { 
+  'meeting-founders': { 
     category: 'primary', 
     weight: 100, 
-    description: 'Co-founder matching, partnerships, collaboration',
-    keywords: ['co-founder', 'cofounder', 'co founder', 'founder', 'partnership', 'collaboration', 'matchmaking', 'matching']
+    description: 'Meeting founders and entrepreneurs',
+    keywords: ['meeting founders', 'founders', 'entrepreneurs', 'co-founder', 'cofounder', 'startup founders']
   },
-  'find-investors': { 
+  'meeting-investors': { 
     category: 'primary', 
     weight: 100, 
-    description: 'VC meetings, funding opportunities, pitch events',
-    keywords: ['investor', 'vc', 'funding', 'capital', 'investment', 'venture', 'pitch', 'demo day']
+    description: 'Meeting investors and VCs',
+    keywords: ['meeting investors', 'investors', 'vc', 'venture capital', 'funding', 'angel investors']
   },
-  'find-angels': { 
+  'connecting-investors': { 
     category: 'primary', 
     weight: 100, 
-    description: 'Angel investor networking, early-stage funding',
-    keywords: ['angel', 'angel investor', 'early stage', 'seed', 'pre-seed']
-  },
-  'find-talent': { 
-    category: 'primary', 
-    weight: 100, 
-    description: 'Hiring, recruitment, team building',
-    keywords: ['hiring', 'talent', 'engineer', 'developer', 'recruit', 'job', 'career', 'team']
-  },
-  'find-customers': { 
-    category: 'primary', 
-    weight: 100, 
-    description: 'Customer acquisition, sales, business development',
-    keywords: ['customer', 'user', 'client', 'sales', 'business development', 'acquisition']
+    description: 'Connecting with investors',
+    keywords: ['connecting investors', 'investor networking', 'vc networking', 'funding', 'investment']
   },
   
   // Secondary Goals (Medium Priority) - 75 points each
-  'find-advisors': { 
+  'meeting-people': { 
     category: 'secondary', 
     weight: 75, 
-    description: 'Mentorship, advisory board, guidance',
-    keywords: ['advisor', 'mentor', 'guidance', 'advisory', 'mentorship']
-  },
-  'find-partners': { 
-    category: 'secondary', 
-    weight: 75, 
-    description: 'Business partnerships, strategic alliances',
-    keywords: ['partner', 'partnership', 'alliance', 'strategic', 'business partner']
-  },
-  'get-feedback': { 
-    category: 'secondary', 
-    weight: 75, 
-    description: 'Product validation, user research, testing',
-    keywords: ['feedback', 'validation', 'test', 'user research', 'beta', 'prototype']
-  },
-  'learn-skills': { 
-    category: 'secondary', 
-    weight: 75, 
-    description: 'Skill development, workshops, training',
-    keywords: ['learn', 'learning', 'skill', 'workshop', 'training', 'education', 'bootcamp']
-  },
-  'industry-insights': { 
-    category: 'secondary', 
-    weight: 75, 
-    description: 'Market trends, industry knowledge',
-    keywords: ['insight', 'trend', 'industry', 'market', 'analysis', 'research']
+    description: 'General networking and meeting people',
+    keywords: ['meeting people', 'networking', 'connect', 'meet', 'social', 'community']
   },
   'networking': { 
     category: 'secondary', 
@@ -72,36 +36,142 @@ const USAGE_TAGS = {
     description: 'Professional relationships, community building',
     keywords: ['networking', 'network', 'connect', 'meet', 'community', 'social']
   },
+  'networking-opportunities': { 
+    category: 'secondary', 
+    weight: 75, 
+    description: 'Networking opportunities',
+    keywords: ['networking opportunities', 'networking', 'connect', 'meet', 'social']
+  },
+  'business-collaboration': { 
+    category: 'secondary', 
+    weight: 75, 
+    description: 'Business partnerships and collaboration',
+    keywords: ['business collaboration', 'partnership', 'collaboration', 'business partner', 'alliance']
+  },
+  'collaboration': { 
+    category: 'secondary', 
+    weight: 75, 
+    description: 'Collaboration and teamwork',
+    keywords: ['collaboration', 'teamwork', 'partnership', 'working together']
+  },
+  'learning-industry-insights': { 
+    category: 'secondary', 
+    weight: 75, 
+    description: 'Learning industry insights and trends',
+    keywords: ['learning industry insights', 'insights', 'trends', 'industry knowledge', 'market trends']
+  },
+  'learning': { 
+    category: 'secondary', 
+    weight: 75, 
+    description: 'Learning and education',
+    keywords: ['learning', 'education', 'knowledge', 'skills', 'development']
+  },
+  'learning-skills': { 
+    category: 'secondary', 
+    weight: 75, 
+    description: 'Learning new skills',
+    keywords: ['learning skills', 'skills', 'development', 'training', 'education']
+  },
+  'professional-development': { 
+    category: 'secondary', 
+    weight: 75, 
+    description: 'Professional development and growth',
+    keywords: ['professional development', 'career growth', 'skills', 'learning', 'development']
+  },
+  'industry-engagement': { 
+    category: 'secondary', 
+    weight: 75, 
+    description: 'Industry engagement and participation',
+    keywords: ['industry engagement', 'industry participation', 'sector involvement', 'industry events']
+  },
+  'business-activities': { 
+    category: 'secondary', 
+    weight: 75, 
+    description: 'Business activities and operations',
+    keywords: ['business activities', 'business', 'operations', 'business development']
+  },
   
   // Specialized Goals (Context-Specific) - 80 points each
-  'pitch-opportunities': { 
+  'business-pitching': { 
     category: 'specialized', 
     weight: 80, 
-    description: 'Demo days, pitch nights, showcases',
-    keywords: ['pitch', 'demo day', 'presentation', 'showcase', 'demo', 'pitching', 'present']
+    description: 'Pitch opportunities and presentations',
+    keywords: ['business pitching', 'pitch', 'presentation', 'demo', 'showcase', 'pitch night']
   },
-  'fundraising': { 
+  'product-demos': { 
     category: 'specialized', 
     weight: 80, 
-    description: 'Fundraising events, investor relations',
-    keywords: ['fundraising', 'fundraise', 'raise', 'investment round', 'series']
+    description: 'Product demonstrations and showcases',
+    keywords: ['product demos', 'demo', 'showcase', 'product launch', 'presentation', 'demo day']
   },
-  'product-launch': { 
-    category: 'specialized', 
-    weight: 80, 
-    description: 'Product launches, announcements, PR',
-    keywords: ['launch', 'announcement', 'release', 'unveil', 'introduce']
-  },
+  
+  // Additional specialized tags
   'women-specific': { 
     category: 'specialized', 
-    weight: 80, 
-    description: 'Women-focused events, diversity initiatives',
-    keywords: ['women', 'female', 'ladies', 'diversity', 'inclusion', 'women in tech']
+    weight: 85, 
+    description: 'Women-specific events and opportunities',
+    keywords: ['women', 'female', 'diversity', 'women in tech', 'female founders', 'women entrepreneurs']
   }
 };
 
 // Industry Tags Configuration
 const INDUSTRY_TAGS = {
+  // General Tech Tags - 30 points each (apply to all industries)
+  'ai': { 
+    category: 'general-tech', 
+    weight: 30, 
+    description: 'Artificial Intelligence - applies to all industries',
+    keywords: ['ai', 'artificial intelligence', 'machine learning', 'ml', 'deep learning', 'neural network']
+  },
+  'technology': { 
+    category: 'general-tech', 
+    weight: 30, 
+    description: 'General technology - applies to all industries',
+    keywords: ['technology', 'tech', 'software', 'digital', 'innovation']
+  },
+  'startup': { 
+    category: 'general-tech', 
+    weight: 30, 
+    description: 'Startup ecosystem - applies to all industries',
+    keywords: ['startup', 'startups', 'entrepreneurship', 'founder', 'entrepreneur']
+  },
+  'venture-capital': { 
+    category: 'general-tech', 
+    weight: 30, 
+    description: 'Venture capital and funding - applies to all industries',
+    keywords: ['venture capital', 'vc', 'funding', 'investment', 'capital']
+  },
+  'general-networking': { 
+    category: 'general-tech', 
+    weight: 30, 
+    description: 'Networking and community - applies to all industries',
+    keywords: ['networking', 'network', 'connect', 'meet', 'community']
+  },
+  'innovation': { 
+    category: 'general-tech', 
+    weight: 30, 
+    description: 'Innovation and disruption - applies to all industries',
+    keywords: ['innovation', 'innovative', 'disruptive', 'breakthrough']
+  },
+  'emerging-tech': { 
+    category: 'general-tech', 
+    weight: 30, 
+    description: 'Emerging technologies - applies to all industries',
+    keywords: ['emerging tech', 'emerging technology', 'cutting edge', 'frontier']
+  },
+  'b2b': { 
+    category: 'general-tech', 
+    weight: 30, 
+    description: 'Business-to-business - applies to all industries',
+    keywords: ['b2b', 'business to business', 'enterprise', 'corporate']
+  },
+  'b2c': { 
+    category: 'general-tech', 
+    weight: 30, 
+    description: 'Business-to-consumer - applies to all industries',
+    keywords: ['b2c', 'business to consumer', 'consumer', 'retail']
+  },
+  
   // Core Tech Industries - 25 points each
   'ai-ml': { 
     category: 'core-tech', 
@@ -260,13 +330,13 @@ const INDUSTRY_TAGS = {
 // Tag Relationships and Complementary Tags
 const TAG_RELATIONSHIPS = {
   // Usage tag relationships
-  'find-cofounder': ['find-partners', 'networking', 'pitch-opportunities'],
-  'find-investors': ['find-angels', 'fundraising', 'pitch-opportunities'],
-  'find-talent': ['networking', 'find-advisors'],
-  'find-customers': ['networking', 'get-feedback', 'product-launch'],
-  'pitch-opportunities': ['find-investors', 'find-angels', 'fundraising'],
-  'fundraising': ['find-investors', 'find-angels', 'pitch-opportunities'],
-  'networking': ['find-cofounder', 'find-partners', 'find-advisors'],
+  'meeting-founders': ['networking', 'business-pitching', 'business-collaboration'],
+  'meeting-investors': ['business-pitching', 'networking', 'connecting-investors'],
+  'connecting-investors': ['meeting-investors', 'business-pitching', 'networking'],
+  'meeting-people': ['networking', 'networking-opportunities'],
+  'networking': ['meeting-people', 'business-collaboration', 'meeting-founders'],
+  'business-pitching': ['meeting-investors', 'product-demos', 'meeting-founders'],
+  'product-demos': ['business-pitching', 'meeting-people'],
   
   // Industry tag relationships
   'ai-ml': ['fintech', 'healthtech', 'cybersecurity', 'robotics'],
@@ -277,59 +347,73 @@ const TAG_RELATIONSHIPS = {
   'sustainability': ['blockchain', 'mobility', 'real-estate']
 };
 
-// Goal mapping for query analysis
+// Goal mapping for query analysis - maps user queries to actual CSV usage tags
 const GOAL_MAPPING = {
-  // Primary Goals
-  'finding co-founder': 'find-cofounder',
-  'finding cofounder': 'find-cofounder',
-  'co-founder': 'find-cofounder',
-  'cofounder': 'find-cofounder',
-  'finding investors': 'find-investors',
-  'investors': 'find-investors',
-  'funding': 'find-investors',
-  'finding angels': 'find-angels',
-  'angels': 'find-angels',
-  'finding talent': 'find-talent',
-  'talent': 'find-talent',
-  'hiring': 'find-talent',
-  'recruiting': 'find-talent',
-  'finding customers': 'find-customers',
-  'customers': 'find-customers',
-  'sales': 'find-customers',
-  'business development': 'find-customers',
+  // Primary Goals - Meeting People
+  'finding co-founder': 'meeting-founders',
+  'finding cofounder': 'meeting-founders',
+  'co-founder': 'meeting-founders',
+  'cofounder': 'meeting-founders',
+  'meeting founders': 'meeting-founders',
+  'founders': 'meeting-founders',
+  'startup founders': 'meeting-founders',
+  'entrepreneurs': 'meeting-founders',
   
-  // Secondary Goals
-  'finding advisors': 'find-advisors',
-  'advisors': 'find-advisors',
-  'mentors': 'find-advisors',
-  'mentorship': 'find-advisors',
-  'finding partners': 'find-partners',
-  'partners': 'find-partners',
-  'partnerships': 'find-partners',
-  'finding users': 'find-users',
-  'users': 'find-users',
-  'feedback': 'get-feedback',
-  'user feedback': 'get-feedback',
-  'validation': 'get-feedback',
-  'testing': 'get-feedback',
+  'finding investors': 'meeting-investors',
+  'investors': 'meeting-investors',
+  'meeting investors': 'meeting-investors',
+  'funding': 'meeting-investors',
+  'connecting investors': 'connecting-investors',
+  'connecting with investors': 'connecting-investors',
+  'investor networking': 'connecting-investors',
+  'vc networking': 'connecting-investors',
+  'finding angels': 'meeting-investors',
+  'angels': 'meeting-investors',
+  'angel investors': 'meeting-investors',
+  
+  'finding talent': 'meeting-people',
+  'talent': 'meeting-people',
+  'hiring': 'meeting-people',
+  'recruiting': 'meeting-people',
+  'finding customers': 'meeting-people',
+  'customers': 'meeting-people',
+  'sales': 'meeting-people',
+  'meeting people': 'meeting-people',
   'networking': 'networking',
-  'learning': 'learn-skills',
-  'skills': 'learn-skills',
-  'workshops': 'learn-skills',
-  'training': 'learn-skills',
-  'insights': 'industry-insights',
-  'industry insights': 'industry-insights',
-  'trends': 'industry-insights',
+  'networking opportunities': 'networking-opportunities',
   
-  // Specialized Goals
-  'pitch': 'pitch-opportunities',
-  'pitching': 'pitch-opportunities',
-  'demo day': 'pitch-opportunities',
-  'showcase': 'pitch-opportunities',
-  'presentation': 'pitch-opportunities',
-  'fundraising': 'fundraising',
-  'product launch': 'product-launch',
-  'launch': 'product-launch',
+  // Business Activities
+  'business development': 'business-collaboration',
+  'business collaboration': 'business-collaboration',
+  'partnership': 'business-collaboration',
+  'partnerships': 'business-collaboration',
+  'collaboration': 'collaboration',
+  'business activities': 'business-activities',
+  
+  // Learning and Development
+  'learning': 'learning',
+  'learning skills': 'learning-skills',
+  'skills': 'learning-skills',
+  'professional development': 'professional-development',
+  'career development': 'professional-development',
+  'industry insights': 'learning-industry-insights',
+  'insights': 'learning-industry-insights',
+  'trends': 'learning-industry-insights',
+  'industry engagement': 'industry-engagement',
+  
+  // Pitching and Demos
+  'pitch': 'business-pitching',
+  'pitching': 'business-pitching',
+  'presentation': 'business-pitching',
+  'demo': 'product-demos',
+  'demos': 'product-demos',
+  'showcase': 'product-demos',
+  'product launch': 'product-demos',
+  
+  // Additional mappings for common queries
+  'workshops': 'learning-skills',
+  'training': 'learning-skills',
+  'education': 'learning',
   'women': 'women-specific',
   'female': 'women-specific',
   'diversity': 'women-specific'
@@ -337,11 +421,30 @@ const GOAL_MAPPING = {
 
 // Industry mapping for query analysis
 const INDUSTRY_MAPPING = {
+  // General Tech Industries (apply to all)
+  'ai': ['ai'],
+  'artificial intelligence': ['ai'],
+  'machine learning': ['ai'],
+  'ml': ['ai'],
+  'technology': ['technology'],
+  'tech': ['technology'],
+  'startup': ['startup'],
+  'startups': ['startup'],
+  'entrepreneurship': ['startup'],
+  'venture capital': ['venture-capital'],
+  'vc': ['venture-capital'],
+  'funding': ['venture-capital'],
+  'networking': ['general-networking'],
+  'innovation': ['innovation'],
+  'emerging tech': ['emerging-tech'],
+  'emerging technology': ['emerging-tech'],
+  'b2b': ['b2b'],
+  'business to business': ['b2b'],
+  'b2c': ['b2c'],
+  'business to consumer': ['b2c'],
+  
   // Core Tech Industries
-  'ai': ['ai-ml'],
-  'artificial intelligence': ['ai-ml'],
-  'machine learning': ['ai-ml'],
-  'ml': ['ai-ml'],
+  'ai-ml': ['ai-ml'],
   'fintech': ['fintech'],
   'financial technology': ['fintech'],
   'payments': ['fintech'],

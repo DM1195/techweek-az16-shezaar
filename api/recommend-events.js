@@ -1,6 +1,5 @@
 const { getSupabaseClient } = require('./_supabase');
 const { getOpenAI } = require('./_openai');
-const { validateEventTags, suggestRelatedTags, calculateTagScore } = require('./tag-validation');
 const { USAGE_TAGS, INDUSTRY_TAGS, GOAL_MAPPING, INDUSTRY_MAPPING, getUsageTagWeight, getIndustryTagWeight } = require('./tag-config');
 
 const TABLE = process.env.EVENTS_TABLE || 'Event List';
@@ -111,44 +110,44 @@ async function extractUserContext(message, openai) {
       }
     };
     
-    // Extract goals - be more comprehensive
+    // Extract goals using actual CSV usage tags
     if (keywords.includes('hire') || keywords.includes('hiring') || keywords.includes('engineers') || keywords.includes('talent') || keywords.includes('recruit')) {
-      context.goals.push('find-talent', 'hiring');
+      context.goals.push('meeting-people');
       context.relevance_suggestions.primary_criteria.push('Events with talent recruitment focus');
       context.relevance_suggestions.ranking_rationale = 'Prioritize events focused on hiring, talent acquisition, and recruitment';
     }
     if (keywords.includes('investor') || keywords.includes('funding') || keywords.includes('angel') || keywords.includes('vc') || keywords.includes('venture')) {
-      context.goals.push('find-investors', 'find-angels');
+      context.goals.push('meeting-investors', 'connecting-investors');
       context.relevance_suggestions.primary_criteria.push('Events with investor networking and funding focus');
       context.relevance_suggestions.ranking_rationale = 'Prioritize events with investor panels, pitch nights, and funding opportunities';
     }
     if (keywords.includes('co-founder') || keywords.includes('cofounder') || keywords.includes('co founder') || keywords.includes('partner') || keywords.includes('cofounder')) {
-      context.goals.push('find-cofounder');
+      context.goals.push('meeting-founders');
       context.relevance_suggestions.primary_criteria.push('Events with co-founder matching and startup partnerships');
       context.relevance_suggestions.ranking_rationale = 'Prioritize events specifically designed for co-founder matching and startup partnerships';
     }
     if (keywords.includes('customer') || keywords.includes('user') || keywords.includes('client') || keywords.includes('users')) {
-      context.goals.push('find-users');
+      context.goals.push('meeting-people');
       context.relevance_suggestions.primary_criteria.push('Events with customer discovery and user research focus');
     }
     if (keywords.includes('advisor') || keywords.includes('mentor') || keywords.includes('guidance')) {
-      context.goals.push('find-advisors');
+      context.goals.push('meeting-people');
       context.relevance_suggestions.primary_criteria.push('Events with mentorship and advisory opportunities');
     }
     if (keywords.includes('network') || keywords.includes('networking') || keywords.includes('connect') || keywords.includes('meet')) {
-      context.goals.push('networking');
+      context.goals.push('networking', 'networking-opportunities');
       context.relevance_suggestions.primary_criteria.push('Events with strong networking opportunities');
     }
     if (keywords.includes('learn') || keywords.includes('learning') || keywords.includes('skill') || keywords.includes('education')) {
-      context.goals.push('learn-skills');
+      context.goals.push('learning', 'learning-skills');
       context.relevance_suggestions.primary_criteria.push('Events with educational and skill-building focus');
     }
     if (keywords.includes('feedback') || keywords.includes('validate') || keywords.includes('test')) {
-      context.goals.push('get-user-feedback');
+      context.goals.push('meeting-people');
       context.relevance_suggestions.primary_criteria.push('Events with user feedback and validation opportunities');
     }
     if (keywords.includes('insight') || keywords.includes('industry') || keywords.includes('trend')) {
-      context.goals.push('industry-insights');
+      context.goals.push('learning-industry-insights');
       context.relevance_suggestions.primary_criteria.push('Events with industry insights and trend analysis');
     }
     
@@ -294,16 +293,10 @@ function rankEventsByRelevance(events, context) {
 
 function calculateRelevanceScore(event, context) {
   let score = 0;
-  const scoreBreakdown = [];
-  
   const eventUsageTags = event.usage_tags || [];
   const eventIndustryTags = event.industry_tags || [];
   const eventTags = event.event_tags || [];
   const allIndustryTags = [...eventIndustryTags, ...eventTags];
-  
-  // Use centralized tag weights
-  const usageTagWeights = USAGE_TAGS;
-  const industryTagWeights = INDUSTRY_TAGS;
   
   // Primary scoring: Usage tags (goals) - MOST IMPORTANT
   if (context.goals && context.goals.length > 0) {
@@ -311,19 +304,12 @@ function calculateRelevanceScore(event, context) {
       eventUsageTags.includes(goal)
     );
     
-    let usageScore = 0;
     matchingUsageTags.forEach(tag => {
-      const weight = getUsageTagWeight(tag);
-      usageScore += weight;
+      score += getUsageTagWeight(tag);
     });
-    
-    score += usageScore;
-    if (usageScore > 0) {
-      scoreBreakdown.push(`Usage tags (${matchingUsageTags.join(', ')}): +${usageScore}`);
-    }
   }
   
-  // Secondary scoring: Industry tags - LESS IMPORTANT
+  // Secondary scoring: Industry tags
   if (context.industries && context.industries.length > 0) {
     const matchingIndustryTags = context.industries.filter(industry => 
       allIndustryTags.some(tag => 
@@ -332,162 +318,21 @@ function calculateRelevanceScore(event, context) {
       )
     );
     
-    let industryScore = 0;
     matchingIndustryTags.forEach(industry => {
-      const weight = getIndustryTagWeight(industry);
-      industryScore += weight;
+      score += getIndustryTagWeight(industry);
     });
-    
-    score += industryScore;
-    if (industryScore > 0) {
-      scoreBreakdown.push(`Industry tags (${matchingIndustryTags.join(', ')}): +${industryScore}`);
-    }
   }
   
-  // Bonus scoring: Events with BOTH usage AND industry tags
-  if (context.goals && context.industries && 
-      context.goals.length > 0 && context.industries.length > 0) {
-    const hasUsageMatch = context.goals.some(goal => eventUsageTags.includes(goal));
-    const hasIndustryMatch = context.industries.some(industry => 
-      allIndustryTags.some(tag => 
-        tag.toLowerCase().includes(industry.toLowerCase()) || 
-        industry.toLowerCase().includes(tag.toLowerCase())
-      )
-    );
-    
-    if (hasUsageMatch && hasIndustryMatch) {
-      score += 150; // High bonus for combined relevance
-      scoreBreakdown.push(`Combined relevance (usage + industry): +150`);
-    }
-  }
-  
-  // Multiple usage tags bonus
-  if (context.goals && context.goals.length > 1) {
-    const matchingUsageTags = context.goals.filter(goal => 
-      eventUsageTags.includes(goal)
-    );
-    if (matchingUsageTags.length > 1) {
-      const bonus = (matchingUsageTags.length - 1) * 25;
-      score += bonus;
-      scoreBreakdown.push(`Multiple usage tags (${matchingUsageTags.length}): +${bonus}`);
-    }
-  }
-  
-  // Time preference bonus
-  if (context.time_preferences) {
-    const timePref = context.time_preferences.toLowerCase();
-    const eventTime = (event.event_time || '').toLowerCase();
-    const eventDescription = (event.event_description || '').toLowerCase();
-    const eventName = (event.event_name || '').toLowerCase();
-    const allText = `${eventTime} ${eventDescription} ${eventName}`;
-    
-    if (timePref.includes('evening') || timePref.includes('night')) {
-      const eveningIndicators = ['pm', 'evening', 'night', 'dinner', 'cocktail', 'sunset'];
-      if (eveningIndicators.some(indicator => allText.includes(indicator))) {
-        score += 50; // Bonus for evening events when user prefers evening
-        scoreBreakdown.push(`Time preference (evening): +50`);
-      }
-    } else if (timePref.includes('morning') || timePref.includes('early')) {
-      const morningIndicators = ['am', 'morning', 'breakfast', 'brunch', 'early'];
-      if (morningIndicators.some(indicator => allText.includes(indicator))) {
-        score += 50; // Bonus for morning events when user prefers morning
-        scoreBreakdown.push(`Time preference (morning): +50`);
-      }
-    }
-  }
-  
-  // Enhanced scoring based on AI strategy and user context
-  const eventDescription = (event.event_description || '').toLowerCase();
-  const eventName = (event.event_name || '').toLowerCase();
-  const allText = `${eventName} ${eventDescription}`;
-  
-  // PRIMARY FOCUS: Startup networking events (HIGH PRIORITY)
-  const startupNetworkingKeywords = ['startup', 'founder', 'entrepreneur', 'networking', 'meet', 'connect', 'mixer', 'happy hour', 'cocktail', 'social'];
-  const hasStartupNetworking = startupNetworkingKeywords.some(keyword => allText.includes(keyword));
-  if (hasStartupNetworking) {
-    score += 40; // High bonus for startup networking
-    scoreBreakdown.push(`Startup networking: +40`);
-  }
-  
-  // PRIMARY FOCUS: Cofounder matchmaking events (HIGHEST PRIORITY)
-  const cofounderKeywords = ['co-founder', 'cofounder', 'co founder', 'founder', 'partnership', 'collaboration', 'matchmaking', 'matching'];
-  const hasCofounderFocus = cofounderKeywords.some(keyword => allText.includes(keyword));
-  if (hasCofounderFocus) {
-    score += 60; // Highest bonus for cofounder events
-    scoreBreakdown.push(`Cofounder matchmaking: +60`);
-  }
-  
-  // SECONDARY FOCUS: Pitch opportunities (HIGH PRIORITY)
-  const pitchKeywords = ['pitch', 'demo day', 'presentation', 'showcase', 'demo', 'pitching', 'present', 'show'];
-  const hasPitchOpportunity = pitchKeywords.some(keyword => allText.includes(keyword));
-  if (hasPitchOpportunity) {
-    score += 50; // High bonus for pitch opportunities
-    scoreBreakdown.push(`Pitch opportunities: +50`);
-  }
-  
-  // Fashion tech industry focus (HIGH PRIORITY when user is fashion tech founder)
-  if (context.industries && context.industries.some(industry => 
-    industry.toLowerCase().includes('fashion') || industry.toLowerCase().includes('fashion-tech')
-  )) {
-    const fashionKeywords = ['fashion', 'style', 'design', 'retail', 'e-commerce', 'beauty', 'apparel', 'clothing', 'wearable'];
-    const hasFashionFocus = fashionKeywords.some(keyword => allText.includes(keyword));
-    if (hasFashionFocus) {
-      score += 45; // High bonus for fashion tech events
-      scoreBreakdown.push(`Fashion tech focus: +45`);
-    }
-  }
-  
-  // General tech focus (MEDIUM PRIORITY)
-  const techKeywords = ['tech', 'technology', 'innovation', 'digital', 'software', 'app', 'platform', 'ai', 'artificial intelligence'];
-  const hasTechFocus = techKeywords.some(keyword => allText.includes(keyword));
-  if (hasTechFocus) {
-    score += 25; // Medium bonus for tech events
-    scoreBreakdown.push(`Tech focus: +25`);
-  }
-  
-  // Learning sessions (LOWER PRIORITY)
-  const learningKeywords = ['workshop', 'learn', 'education', 'training', 'bootcamp', 'session', 'seminar', 'masterclass'];
-  const hasLearningFocus = learningKeywords.some(keyword => allText.includes(keyword));
-  if (hasLearningFocus) {
-    score += 15; // Lower bonus for learning events
-    scoreBreakdown.push(`Learning sessions: +15`);
-  }
-  
-  // BONUS: Events that combine multiple high-priority factors
-  let combinedFactors = 0;
-  if (hasCofounderFocus) combinedFactors++;
-  if (hasPitchOpportunity) combinedFactors++;
-  if (hasStartupNetworking) combinedFactors++;
-  if (context.industries && context.industries.some(industry => 
-    industry.toLowerCase().includes('fashion') || industry.toLowerCase().includes('fashion-tech')
-  ) && allText.includes('fashion')) combinedFactors++;
-  
-  if (combinedFactors >= 2) {
-    const bonus = combinedFactors * 25; // 25 points per combined factor
-    score += bonus;
-    scoreBreakdown.push(`Combined factors (${combinedFactors}): +${bonus}`);
+  // General tech tags bonus (applies to all industries)
+  const generalTechTags = ['ai', 'technology', 'startup', 'venture-capital', 'networking', 'innovation', 'emerging-tech', 'b2b', 'b2c'];
+  const hasGeneralTechTags = allIndustryTags.some(tag => generalTechTags.includes(tag));
+  if (hasGeneralTechTags) {
+    score += 20;
   }
   
   // Women-specific bonus
   if (context.is_women_specific && event.women_specific) {
     score += 30;
-    scoreBreakdown.push(`Women-specific: +30`);
-  }
-  
-  // Quality indicators
-  if (event.event_description && event.event_description.length > 100) {
-    score += 10; // Bonus for events with detailed descriptions
-    scoreBreakdown.push(`Detailed description: +10`);
-  }
-  
-  if (event.event_url) {
-    score += 5; // Bonus for events with URLs
-    scoreBreakdown.push(`Has URL: +5`);
-  }
-  
-  // Log detailed scoring for top events
-  if (score > 0) {
-    console.log(`📊 ${event.event_name}: ${score} points (${scoreBreakdown.join(', ')})`);
   }
   
   return score;
@@ -499,7 +344,7 @@ async function filterEvents(supabase, context, limit = 1000) {
     
     let query = supabase
       .from(TABLE)
-      .select('id,event_name,event_date,event_time,event_location,event_description,hosted_by,price,event_url,event_tags,usage_tags,industry_tags,women_specific,invite_only,event_name_and_link,event_category,updated_at')
+      .select('event_name,event_date,event_time,event_location,event_description,hosted_by,price,event_url,event_tags,usage_tags,industry_tags,women_specific,invite_only,event_name_and_link,outfit_category,updated_at')
       .order('updated_at', { ascending: false })
       .limit(limit);
 
@@ -518,19 +363,11 @@ async function filterEvents(supabase, context, limit = 1000) {
     
     console.log(`✅ Found ${data?.length || 0} events from database`);
     
-    // Debug: Show some sample events with their usage tags and validate them
+    // Debug: Show some sample events with their usage tags
     if (data && data.length > 0) {
       console.log('📋 Sample events with usage tags:');
       data.slice(0, 5).forEach((event, index) => {
-        const validation = validateEventTags(event);
-        const tagStatus = validation.overall ? '✅' : '⚠️';
-        console.log(`${index + 1}. ${event.event_name} - Usage tags: ${event.usage_tags ? event.usage_tags.join(', ') : 'None'} ${tagStatus}`);
-        
-        // Log validation warnings for events with issues
-        if (!validation.overall) {
-          console.log(`   Usage validation: ${validation.usage.warnings.join(', ')}`);
-          console.log(`   Industry validation: ${validation.industry.warnings.join(', ')}`);
-        }
+        console.log(`${index + 1}. ${event.event_name} - Usage tags: ${event.usage_tags ? event.usage_tags.join(', ') : 'None'}`);
       });
     }
     
@@ -563,20 +400,20 @@ async function filterEvents(supabase, context, limit = 1000) {
           const allText = `${eventName} ${eventDescription}`;
           
           // Look for cofounder-related keywords in the content
-          if (context.goals.includes('find-cofounder')) {
+          if (context.goals.includes('meeting-founders')) {
             const cofounderKeywords = ['co-founder', 'cofounder', 'co founder', 'founder', 'startup', 'entrepreneur', 'partnership', 'collaboration'];
             return cofounderKeywords.some(keyword => allText.includes(keyword));
           }
           
           // Look for investor-related keywords
-          if (context.goals.includes('find-investors') || context.goals.includes('find-angels')) {
+          if (context.goals.includes('meeting-investors') || context.goals.includes('connecting-investors')) {
             const investorKeywords = ['investor', 'angel', 'vc', 'funding', 'capital', 'investment', 'pitch', 'demo day'];
             return investorKeywords.some(keyword => allText.includes(keyword));
           }
           
           // Look for talent-related keywords
-          if (context.goals.includes('find-talent')) {
-            const talentKeywords = ['hiring', 'talent', 'engineer', 'developer', 'recruit', 'job', 'career'];
+          if (context.goals.includes('meeting-people')) {
+            const talentKeywords = ['hiring', 'talent', 'engineer', 'developer', 'recruit', 'job', 'career', 'networking', 'meet', 'connect'];
             return talentKeywords.some(keyword => allText.includes(keyword));
           }
           
@@ -596,6 +433,19 @@ async function filterEvents(supabase, context, limit = 1000) {
     // This ensures usage tags always take priority over industry tags
     if (context.industries && context.industries.length > 0) {
       console.log(`✅ Industry preferences will be used for ranking, not filtering`);
+      
+      // Special case: If user has general tech interests (ai, startup, technology, etc.),
+      // include events with general tech tags even if they don't have specific industry matches
+      const generalTechKeywords = ['ai', 'technology', 'startup', 'venture-capital', 'networking', 'innovation', 'emerging-tech', 'b2b', 'b2c'];
+      const hasGeneralTechInterest = context.industries.some(industry => 
+        generalTechKeywords.some(keyword => 
+          industry.toLowerCase().includes(keyword) || keyword.includes(industry.toLowerCase())
+        )
+      );
+      
+      if (hasGeneralTechInterest) {
+        console.log(`✅ User has general tech interests - events with general tech tags will be included`);
+      }
     }
 
     // Filter by location if specified
@@ -732,15 +582,12 @@ Available Events:
 ${eventSummaries}
 
 IMPORTANT RANKING PRIORITIES (in order):
-1. PRIMARY USAGE TAGS (100 points each) - HIGHEST PRIORITY: find-cofounder, find-investors, find-angels, find-talent, find-customers
-2. SPECIALIZED USAGE TAGS (80 points each) - HIGH PRIORITY: pitch-opportunities, fundraising, product-launch, women-specific
-3. SECONDARY USAGE TAGS (75 points each) - MEDIUM PRIORITY: find-advisors, find-partners, get-feedback, learn-skills, industry-insights, networking
-4. INDUSTRY TAGS - MEDIUM PRIORITY: Events matching user's industry interests (ai-ml, fintech, healthtech, etc.)
-5. COMBINED RELEVANCE (150 points bonus) - HIGH PRIORITY: Events with BOTH usage AND industry matches
-6. MULTIPLE USAGE TAGS (25 points per additional) - MEDIUM PRIORITY: Events matching multiple user goals
-7. TIME PREFERENCES (50 points) - MEDIUM PRIORITY: Events matching user's time preferences
-8. WOMEN-SPECIFIC (30 points) - MEDIUM PRIORITY: Women-focused events when requested
-9. QUALITY INDICATORS (5-10 points) - LOW PRIORITY: Detailed descriptions, URLs, etc.
+1. PRIMARY USAGE TAGS (100 points each) - HIGHEST PRIORITY: meeting-founders, meeting-investors, connecting-investors
+2. SPECIALIZED USAGE TAGS (80 points each) - HIGH PRIORITY: business-pitching, product-demos
+3. SECONDARY USAGE TAGS (75 points each) - MEDIUM PRIORITY: meeting-people, networking, networking-opportunities, business-collaboration, collaboration, learning-industry-insights, learning, learning-skills, professional-development, industry-engagement, business-activities
+4. INDUSTRY TAGS - MEDIUM PRIORITY: Events matching user's industry interests (ai, technology, startup, fintech, healthtech, etc.)
+5. GENERAL TECH TAGS (20 points) - Events with general tech tags (ai, technology, startup, venture-capital, networking, innovation, emerging-tech, b2b, b2c) apply to all industries
+6. WOMEN-SPECIFIC (30 points) - MEDIUM PRIORITY: Women-focused events when requested
 
 Instructions:
 1. Select the top ${limit} most relevant events for this user
@@ -939,7 +786,7 @@ module.exports = async (req, res) => {
     // Step 4: Shape response
     console.log('🔧 Step 4: Shaping response...');
     const results = finalEvents.map((e) => ({
-      id: e.id,
+      id: e.event_name_and_link || e.event_url || e.event_name, // Use as unique identifier
       name: e.event_name,
       description: e.event_description,
       date: e.event_date,
@@ -951,7 +798,7 @@ module.exports = async (req, res) => {
       tags: e.event_tags,
       women_specific: e.women_specific,
       invite_only: e.invite_only,
-      event_category: e.event_category || generateEventCategory(e.event_name, e.event_description, e.event_tags),
+      event_category: e.outfit_category || generateEventCategory(e.event_name, e.event_description, e.event_tags),
       aiExplanation: e.aiExplanation || 'Selected based on relevance to your query'
     }));
     console.log(`✅ Shaped ${results.length} results`);

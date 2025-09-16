@@ -15,7 +15,7 @@ def load_csv(file_path: str) -> pd.DataFrame:
         df = pd.read_csv(file_path)
         print(f"Loaded {len(df)} events from {file_path}")
         return df
-    exceagspt Exception as e:
+    except Exception as e:
         print(f"Error loading CSV file: {e}")
         sys.exit(1)
 

@@ -6,6 +6,7 @@ import os
 import sys
 import time
 from dataclasses import dataclass, asdict
+from datetime import datetime
 from typing import List, Optional, Tuple
 from dotenv import load_dotenv
 import openai
@@ -48,8 +49,11 @@ class Event:
     event_tags: list  # Will be stored as JSON array
     usage_tags: list  # Will be stored as JSON array - tags for what the event can be used for
     industry_tags: list  # Will be stored as JSON array - industry-specific tags
+    event_type: str  # Primary type of event (networking, panel, workshop, etc.)
+    outfit_category: str  # Outfit category for recommendations (business-casual, casual, activity, etc.)
     women_specific: bool  # Whether the event is specifically for women
     invite_only: bool
+    updated_at: str  # Timestamp when the event was last updated
 
 
 def _clean_text(text: Optional[str]) -> str:
@@ -138,217 +142,155 @@ def clean_event_time(time_str: str, description: str = "") -> tuple[str, bool]:
     return "", False
 
 
-def generate_event_tags(description: str, event_name: str = "", hosted_by: str = "") -> list:
-    """Generate relevant tags for an event using OpenAI based on description, name, and host."""
+def generate_all_event_tags(description: str, event_name: str = "", hosted_by: str = "") -> dict:
+    """Generate all event tags in a single OpenAI API call for efficiency."""
     if not description or len(description.strip()) < 10:
-        return []
+        return {
+            'event_tags': [],
+            'usage_tags': [],
+            'industry_tags': [],
+            'event_type': '',
+            'outfit_category': '',
+            'women_specific': False,
+            'invite_only': False
+        }
     
     try:
         prompt = f"""
-        Analyze this tech event and generate relevant tags. Focus on:
-        - Gender (women, men, all-gender, etc.)
-        - Industry (AI, fintech, biotech, climate, etc.)
-        - Purpose/Type (dinner, networking, panel, pitch, hackathon, etc.)
-        - Target Audience (founders, investors, angels, VCs, engineers, etc.)
-        - Other relevant categories
-        
+        Analyze this tech event and provide comprehensive categorization. Return your response as a JSON object with the following structure:
+
+        {{
+            "event_tags": ["tag1", "tag2", "tag3"],
+            "usage_tags": ["usage1", "usage2"],
+            "industry_tags": ["industry1", "industry2"],
+            "event_type": "primary-event-type",
+            "outfit_category": "outfit-category",
+            "women_specific": true/false,
+            "invite_only": true/false
+        }}
+
         Event Name: {event_name}
         Hosted By: {hosted_by}
-        Description: {description[:500]}...
-        
-        Return only 3-8 comma-separated tags, no explanations. Use lowercase, hyphenated format.
-        Examples: women-in-tech, ai, networking-dinner, founders, investors, fintech, climate-tech
+        Description: {description[:800]}...
+
+        Guidelines for each field:
+
+        EVENT_TYPE: Identify the PRIMARY type of event. Choose the most appropriate single type:
+        - networking: Networking events, mixers, happy hours, meetups
+        - panel: Panel discussions, talks, presentations, fireside chats
+        - workshop: Hands-on workshops, training sessions, masterclasses
+        - hackathon: Hackathons, buildathons, coding competitions
+        - demo-day: Demo days, pitch events, showcase events
+        - dinner: Dinners, luncheons, breakfasts, food events
+        - conference: Conferences, summits, large-scale events
+        - meetup: Small meetups, casual gatherings, community events
+        - pitch: Pitch competitions, pitch nights, investor events
+        - social: Social events, parties, celebrations, entertainment
+        - other: Any other type not listed above
+
+        OUTFIT_CATEGORY: Determine the appropriate dress code/outfit category for this event:
+        - business-casual: Professional networking, mixers, happy hours, pitch nights, demo days, investor panels, startup showcases, presentations, business meetings
+        - casual: Community events, workshops, creative collabs, coffee walks, AI bootcamps, coding nights, work sessions, learning events, hackathons
+        - activity: Physical activities like pickleball, hiking, yoga, run clubs, fitness events, sports, outdoor activities, morning workouts
+        - daytime-social: Brunches, lunches, garden parties, morning/afternoon social gatherings, breakfast events, daytime dining
+        - evening-social: Dinners, parties, galas, evening celebrations, formal events, night social gatherings, cocktail parties
+
+        EVENT_TAGS (3-8 tags): Generate comprehensive tags covering:
+        - Gender focus (women, men, all-gender, diverse, etc.)
+        - Event type (dinner, networking, panel, pitch, hackathon, workshop, conference, meetup, etc.)
+        - Target audience (founders, investors, angels, VCs, engineers, designers, marketers, etc.)
+        - Format (virtual, in-person, hybrid, etc.)
+        - Industry focus (ai, fintech, climate, health, etc.)
+        - Event characteristics (exclusive, casual, formal, startup-focused, etc.)
+        Use lowercase, hyphenated format. Be creative and comprehensive.
+
+        USAGE_TAGS: Generate tags for what this event can be used for. Consider:
+        - Meeting people (cofounders, investors, advisors, users, talent, mentors)
+        - Learning (skills, industry insights, best practices)
+        - Business activities (fundraising, pitching, product demos, collaboration)
+        - Professional development (networking, mentorship, career growth)
+        - Industry engagement (trends, innovation, market insights)
+        Be generous - include all relevant uses. Use descriptive, hyphenated tags.
+
+        INDUSTRY_TAGS: Identify ALL relevant industries and sectors this event touches:
+        - Technology sectors (ai, fintech, healthtech, edtech, climate-tech, etc.)
+        - Business sectors (startup, enterprise, consumer, b2b, b2c, etc.)
+        - Professional sectors (venture-capital, consulting, legal, marketing, etc.)
+        - Emerging sectors (web3, blockchain, sustainability, robotics, etc.)
+        - Traditional sectors being disrupted (finance, healthcare, education, etc.)
+        Don't limit yourself to a predefined list - identify all relevant industries.
+
+        WOMEN_SPECIFIC: true if the event is specifically targeted at women, false otherwise
+        Consider: women-focused language, female leadership, diversity initiatives, women-only events, etc.
+
+        INVITE_ONLY: true if the event requires an invitation or is exclusive, false otherwise
+        Consider: invitation requirements, exclusivity, private events, member-only, VIP, etc.
+
+        Return only the JSON object, no additional text.
         """
         
         response = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are an expert at categorizing tech events. Generate relevant, concise tags."},
+                {"role": "system", "content": "You are an expert at categorizing tech events. Analyze the event and return a JSON object with all requested categorizations."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=100,
-            temperature=0.3
-        )
-        
-        tags_text = response.choices[0].message.content.strip()
-        # Clean up the response and convert to list
-        tags_text = re.sub(r'[^\w\s,-]', '', tags_text)  # Remove special chars except commas and hyphens
-        tags_text = re.sub(r'\s+', ' ', tags_text)  # Normalize whitespace
-        
-        # Split by comma and clean up each tag
-        tags = [tag.strip().lower() for tag in tags_text.split(',') if tag.strip()]
-        return tags
-        
-    except Exception as e:
-        print(f"Error generating tags: {e}")
-        return []
-
-
-def generate_industry_tags(description: str, event_name: str = "", hosted_by: str = "") -> list:
-    """Generate industry-specific tags for an event using OpenAI."""
-    if not description or len(description.strip()) < 10:
-        return []
-    
-    try:
-        prompt = f"""
-        Analyze this tech event and determine its primary industry focus. Focus on these specific industry categories:
-        - ai: Artificial Intelligence, Machine Learning, ML, AI tools, AI infrastructure
-        - fintech: Financial Technology, payments, banking, crypto, blockchain, DeFi
-        - wellness: Health, fitness, mental health, wellness tech, health-tech
-        - sustainability: Climate tech, green tech, environmental, clean energy, sustainability
-        - blockchain: Crypto, Web3, blockchain, DeFi, NFT, cryptocurrency
-        - cybersecurity: Security, privacy, infosec, cybersecurity, data protection
-        - startup: Entrepreneurship, founders, venture capital, startup ecosystem
-        - media: Content creation, media, marketing, advertising, social media
-        - enterprise: B2B, enterprise software, SaaS, business tools
-        - consumer: B2C, consumer products, consumer apps, consumer tech
-        - gaming: Gaming, esports, game development, interactive entertainment
-        - edtech: Education technology, learning, training, educational tools
-        - biotech: Biotechnology, life sciences, medical devices, pharmaceuticals
-        - mobility: Transportation, automotive, mobility, logistics, delivery
-        - real-estate: PropTech, real estate, property technology, construction
-        - legal: Legal tech, law, compliance, regulatory technology
-        - hr: Human resources, talent, recruiting, people operations
-        - sales: Sales tech, CRM, sales tools, revenue operations
-        - marketing: Marketing tech, advertising, growth, customer acquisition
-        
-        Event Name: {event_name}
-        Hosted By: {hosted_by}
-        Description: {description[:500]}...
-        
-        Return only the most relevant industry tags from the list above, comma-separated.
-        Focus on the PRIMARY industry focus of the event. Use the exact tag names provided above.
-        
-        Examples: ai, fintech, wellness, sustainability, blockchain
-        """
-        
-        response = openai.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are an expert at categorizing tech events by industry. Generate relevant industry tags."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=100,
+            max_tokens=500,
             temperature=0.2
         )
         
-        tags_text = response.choices[0].message.content.strip()
-        # Clean up the response and convert to list
-        tags_text = re.sub(r'[^\w\s,-]', '', tags_text)  # Remove special chars except commas and hyphens
-        tags_text = re.sub(r'\s+', ' ', tags_text)  # Normalize whitespace
+        response_text = response.choices[0].message.content.strip()
         
-        # Split by comma and clean up each tag
-        tags = [tag.strip().lower() for tag in tags_text.split(',') if tag.strip()]
+        # Clean up the response - remove markdown code blocks if present
+        if response_text.startswith('```json'):
+            response_text = response_text[7:]  # Remove ```json
+        if response_text.startswith('```'):
+            response_text = response_text[3:]   # Remove ```
+        if response_text.endswith('```'):
+            response_text = response_text[:-3]  # Remove trailing ```
         
-        # Validate tags against known industry categories
-        # Import centralized tag configuration
-        import sys
-        import os
-        sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'api'))
-        from tag_config import INDUSTRY_TAGS
+        response_text = response_text.strip()
         
-        valid_industry_tags = set(INDUSTRY_TAGS.keys())
         
-        # Filter to only include valid tags
-        valid_tags = [tag for tag in tags if tag in valid_industry_tags]
-        return valid_tags
-        
-    except Exception as e:
-        print(f"Error generating industry tags: {e}")
-        return []
-
-
-def is_women_specific_event(description: str, event_name: str = "", hosted_by: str = "") -> bool:
-    """Check if an event is specifically targeted at women."""
-    if not description and not event_name:
-        return False
-    
-    # Combine all text for analysis
-    full_text = f"{event_name} {description} {hosted_by}".lower()
-    
-    # Keywords that indicate women-specific events
-    women_keywords = [
-        'women', 'female', 'ladies', 'girls', 'she', 'her', 'women in tech',
-        'women in ai', 'women founders', 'women entrepreneurs', 'women leaders',
-        'female founders', 'female entrepreneurs', 'female leaders',
-        'women-only', 'women only', 'ladies only', 'female only',
-        'women\'s', 'womens', 'she-', 'her-', 'women-', 'female-',
-        'diversity and inclusion', 'diversity & inclusion', 'inclusive',
-        'women in', 'female in', 'ladies in'
-    ]
-    
-    # Check for women-specific keywords
-    for keyword in women_keywords:
-        if keyword in full_text:
-            return True
-    
-    return False
-
-
-def generate_usage_tags(description: str, event_name: str = "", hosted_by: str = "") -> list:
-    """Generate usage tags for an event using OpenAI to categorize what the event can be used for."""
-    if not description or len(description.strip()) < 10:
-        return []
-    
-    try:
-        prompt = f"""
-        Analyze this tech event and determine what it can be used for. Focus on these specific usage categories:
-        - find-cofounder: Events where you can meet potential co-founders, partners, or collaborators
-        - find-angels: Events where you can meet angel investors or early-stage investors
-        - find-advisors: Events where you can meet advisors, mentors, or industry experts
-        - find-users: Events where you can meet potential users, customers, or beta testers
-        - get-user-feedback: Events where you can get feedback on your product or idea
-        - find-investors: Events where you can meet VCs, institutional investors, or funding sources
-        - find-talent: Events where you can meet potential employees, contractors, or team members
-        - learn-skills: Events focused on learning, workshops, or skill development
-        - industry-insights: Events for staying updated on industry trends and insights
-        - networking: General networking events for building professional relationships
-        
-        Event Name: {event_name}
-        Hosted By: {hosted_by}
-        Description: {description[:500]}...
-        
-        Return only the relevant usage tags from the list above, comma-separated. 
-        Be generous - if an event could potentially be used for multiple purposes, include all relevant ones.
-        Use the exact tag names provided above.
-        
-        Examples: find-cofounder, find-angels, networking, learn-skills
-        """
-        
-        response = openai.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are an expert at analyzing tech events for their potential uses. Generate relevant usage tags."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=150,
-            temperature=0.2
-        )
-        
-        tags_text = response.choices[0].message.content.strip()
-        # Clean up the response and convert to list
-        tags_text = re.sub(r'[^\w\s,-]', '', tags_text)  # Remove special chars except commas and hyphens
-        tags_text = re.sub(r'\s+', ' ', tags_text)  # Normalize whitespace
-        
-        # Split by comma and clean up each tag
-        tags = [tag.strip().lower() for tag in tags_text.split(',') if tag.strip()]
-        
-        # Validate tags against known usage categories
-        # Import centralized tag configuration
-        import sys
-        import os
-        sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'api'))
-        from tag_config import USAGE_TAGS
-        
-        valid_usage_tags = set(USAGE_TAGS.keys())
-        
-        # Filter to only include valid tags
-        valid_tags = [tag for tag in tags if tag in valid_usage_tags]
-        return valid_tags
+        # Parse JSON response
+        import json
+        try:
+            result = json.loads(response_text)
+            
+            # Validate and clean the response
+            return {
+                'event_tags': result.get('event_tags', []),
+                'usage_tags': result.get('usage_tags', []),
+                'industry_tags': result.get('industry_tags', []),
+                'event_type': result.get('event_type', ''),
+                'outfit_category': result.get('outfit_category', ''),
+                'women_specific': bool(result.get('women_specific', False)),
+                'invite_only': bool(result.get('invite_only', False))
+            }
+        except json.JSONDecodeError as e:
+            # Fallback if JSON parsing fails
+            print(f"JSON parsing failed for event: {event_name}")
+            return {
+                'event_tags': [],
+                'usage_tags': [],
+                'industry_tags': [],
+                'event_type': '',
+                'outfit_category': '',
+                'women_specific': False,
+                'invite_only': False
+            }
         
     except Exception as e:
-        print(f"Error generating usage tags: {e}")
-        return []
+        print(f"Error generating all tags: {e}")
+        return {
+            'event_tags': [],
+            'usage_tags': [],
+            'industry_tags': [],
+            'event_type': '',
+            'outfit_category': '',
+            'women_specific': False,
+            'invite_only': False
+        }
 
 
 def fetch_external_details(url: str, timeout: int = 20) -> Tuple[str, str, str]:
@@ -675,8 +617,11 @@ def scrape_events(emit_json: bool = False) -> List[Event]:
                 event_tags=tags,  # Empty tags for now
                 usage_tags=[],  # Empty usage tags for now
                 industry_tags=[],  # Empty industry tags for now
+                event_type="",  # Will be determined by AI
+                outfit_category="",  # Will be determined by AI
                 women_specific=False,  # Will be determined later
                 invite_only=is_invite_only,
+                updated_at=datetime.now().isoformat(),  # Current timestamp
             )
             
             events.append(event)
@@ -698,9 +643,12 @@ def write_csv(events: List[Event], out_path: str) -> None:
         "event_tags",
         "usage_tags",
         "industry_tags",
+        "event_type",  # Primary type of event
+        "outfit_category",  # Outfit category for recommendations
         "women_specific",
         "invite_only",
         "event_name_and_link",  # Add composite key column
+        "updated_at",  # Timestamp when event was last updated
     ]
     
     # Ensure the data directory exists
@@ -743,20 +691,15 @@ def update_csv_with_keywords(csv_path: str) -> None:
         event_name = event.get('event_name', '')
         hosted_by = event.get('hosted_by', '')
         
-        tags = generate_event_tags(description, event_name, hosted_by)
-        event['event_tags'] = tags
-        
-        # Generate usage tags using OpenAI
-        usage_tags = generate_usage_tags(description, event_name, hosted_by)
-        event['usage_tags'] = usage_tags
-        
-        # Generate industry tags using OpenAI
-        industry_tags = generate_industry_tags(description, event_name, hosted_by)
-        event['industry_tags'] = industry_tags
-        
-        # Check if event is women-specific
-        women_specific = is_women_specific_event(description, event_name, hosted_by)
-        event['women_specific'] = women_specific
+        # Generate all tags in a single API call for efficiency
+        all_tags = generate_all_event_tags(description, event_name, hosted_by)
+        event['event_tags'] = all_tags['event_tags']
+        event['usage_tags'] = all_tags['usage_tags']
+        event['industry_tags'] = all_tags['industry_tags']
+        event['event_type'] = all_tags['event_type']
+        event['outfit_category'] = all_tags['outfit_category']
+        event['women_specific'] = all_tags['women_specific']
+        event['invite_only'] = all_tags['invite_only']
         
         # Update the composite key
         event['event_name_and_link'] = f"{event['event_name']} | {event['event_url']}"
@@ -774,9 +717,12 @@ def update_csv_with_keywords(csv_path: str) -> None:
         "event_tags",
         "usage_tags",
         "industry_tags",
+        "event_type",
+        "outfit_category",
         "women_specific",
         "invite_only",
         "event_name_and_link",
+        "updated_at",
     ]
     
     with open(csv_path, 'w', newline='', encoding='utf-8') as f:

@@ -1,6 +1,16 @@
 const { getSupabaseClient } = require('./_supabase');
 const { getOpenAI } = require('./_openai');
 
+const OUTFIT_TABLE = process.env.OUTFIT_TABLE || 'Outfit Recommendations';
+
+// Database schema for Outfit Recommendations table:
+// - id (SERIAL PRIMARY KEY)
+// - event_category (TEXT NOT NULL) - Event type (Business Casual, Activity, etc.)
+// - gender (TEXT NOT NULL) - Gender preference (female, male, gender-neutral)
+// - body_comfort (TEXT NOT NULL) - Comfort level (modest, bold, mid)
+// - created_at (TIMESTAMP)
+// - updated_at (TIMESTAMP)
+
 // Generate outfit recommendation based on style_fit and body_comfort from database
 function generateOutfitFromStyleAndComfort(eventCategory, styleFit, bodyComfort, gender) {
   const isFemale = gender === 'female';
@@ -75,9 +85,9 @@ async function getOutfitRecommendationsFromSupabase(eventCategories, gender) {
 
     // Build query for outfit recommendations
     let query = supabase
-      .from('Outfit Recommendations')
+      .from(OUTFIT_TABLE)
       .select('*')
-      .in('event_category', eventCategories);
+      .in('outfit_category', eventCategories);
 
     console.log('Querying outfit recommendations for categories:', eventCategories);
     
@@ -102,9 +112,11 @@ async function getOutfitRecommendationsFromSupabase(eventCategories, gender) {
 
     if (error) {
       console.error('Error fetching outfit recommendations:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       return [];
     }
 
+    console.log(`✅ Found ${data?.length || 0} outfit recommendations from database`);
     return data || [];
   } catch (error) {
     console.error('Error in getOutfitRecommendationsFromSupabase:', error);
@@ -132,8 +144,14 @@ async function getRecommendedEvents(message) {
   }
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
+  console.log('=== RECOMMEND-OUTFIT API CALLED ===');
+  console.log('Method:', req.method);
+  console.log('Body:', JSON.stringify(req.body, null, 2));
+  
   if (req.method !== 'POST') {
+    console.log('❌ Method not allowed:', req.method);
+    res.setHeader('Allow', 'POST');
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
 
@@ -141,8 +159,14 @@ export default async function handler(req, res) {
     const { message, gender, currentEvents } = req.body;
     
     if (!message) {
+      console.log('❌ Missing message parameter');
       return res.status(400).json({ ok: false, error: 'Message is required' });
     }
+    
+    console.log('✅ Processing outfit recommendation request');
+    console.log('✅ Message:', message);
+    console.log('✅ Gender:', gender);
+    console.log('✅ Current events provided:', currentEvents ? 'Yes' : 'No');
 
     // Use current events from frontend if provided, otherwise fetch them
     let recommendedEvents = currentEvents || [];
@@ -152,12 +176,15 @@ export default async function handler(req, res) {
     }
     
     if (recommendedEvents.length === 0) {
+      console.log('⚠️ No events found to base outfit recommendations on');
       return res.status(200).json({ 
         ok: true, 
         recommendation: "No events found to base outfit recommendations on.",
         reasoning: "We couldn't find any events matching your criteria to generate outfit recommendations.",
         eventCategories: [],
-        outfitRecommendations: []
+        outfitRecommendations: [],
+        count: 0,
+        message: "No events found to base outfit recommendations on."
       });
     }
 
@@ -165,12 +192,15 @@ export default async function handler(req, res) {
     const eventCategories = [...new Set(recommendedEvents.map(event => event.event_category).filter(Boolean))];
     
     if (eventCategories.length === 0) {
+      console.log('⚠️ No event categories found to base outfit recommendations on');
       return res.status(200).json({ 
         ok: true, 
         recommendation: "No event categories found to base outfit recommendations on.",
         reasoning: "We couldn't determine the event categories for your recommended events.",
         eventCategories: [],
-        outfitRecommendations: []
+        outfitRecommendations: [],
+        count: 0,
+        message: "No event categories found to base outfit recommendations on."
       });
     }
 
@@ -185,11 +215,12 @@ export default async function handler(req, res) {
       // Map database records to the expected format
       const mappedRecommendations = outfitRecommendations.map(rec => {
         // Generate outfit recommendation based on the available data
+        // Fix parameter order: (eventCategory, styleFit, bodyComfort, gender)
         const outfitRecommendation = generateOutfitFromStyleAndComfort(rec.event_category, rec.gender, rec.body_comfort, gender);
         
         return {
           event_category: rec.event_category,
-          outfit_recommendation: rec.recommendation || outfitRecommendation, // Use database recommendation if available
+          outfit_recommendation: outfitRecommendation, // Always use generated recommendation since DB doesn't store it
           reasoning: `This ${rec.gender} style with ${rec.body_comfort} comfort level is perfect for ${rec.event_category} events.`,
           style_fit: rec.gender,
           body_comfort: rec.body_comfort
@@ -210,7 +241,9 @@ export default async function handler(req, res) {
         recommendation: combinedRecommendation,
         reasoning: combinedReasoning,
         eventCategories: eventCategories,
-        outfitRecommendations: mappedRecommendations
+        outfitRecommendations: mappedRecommendations,
+        count: mappedRecommendations.length,
+        message: `Found ${mappedRecommendations.length} outfit recommendations for your event categories.`
       });
     }
 
@@ -220,7 +253,9 @@ export default async function handler(req, res) {
       recommendation: "No specific outfit recommendations found for your event categories.",
       reasoning: "We couldn't find outfit recommendations in our database for your selected event categories and preferences.",
       eventCategories: eventCategories,
-      outfitRecommendations: []
+      outfitRecommendations: [],
+      count: 0,
+      message: "No outfit recommendations found in our database for your event categories."
     });
 
   } catch (error) {
@@ -231,7 +266,9 @@ export default async function handler(req, res) {
       error: 'Failed to generate outfit recommendation',
       recommendation: "Sorry, we encountered an error while generating your outfit recommendation. Please try again later.",
       reasoning: "An error occurred while processing your request.",
-      eventCategories: []
+      eventCategories: [],
+      count: 0,
+      message: "An error occurred while processing your request."
     });
   }
 }
