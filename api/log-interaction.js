@@ -33,6 +33,8 @@ module.exports = async (req, res) => {
     
     console.log('Inserting to Supabase:', insertData);
     console.log('Table name:', INTERACTIONS_TABLE);
+    console.log('Data type:', typeof insertData.data);
+    console.log('Data value:', insertData.data);
     
     const { error } = await supabase
       .from(INTERACTIONS_TABLE)

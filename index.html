@@ -2254,49 +2254,67 @@
           dd.previousElementSibling.classList.remove('open');
         });
         
-        // Fetch ALL events from database (reset query logic)
-        console.log('Fetching all events from database...');
-        fetch('/api/get-events?limit=2000')
-          .then(response => {
-            console.log('Fetch response:', response.status);
-            return response.json();
-          })
-          .then(data => {
-            console.log('Fetch data:', data);
-            if (data.ok && data.results) {
-              allEvents = data.results;
-              filteredEvents = [...allEvents];
-              console.log('Updated allEvents length:', allEvents.length);
-              populateFilters(allEvents);
-              
-              // Update results title to show all events
-              const resultsTitle = $('results-title');
-              if (resultsTitle) {
-                resultsTitle.textContent = 'All Events';
-              }
-              
-              // Hide AI reasoning when showing all events
-              if (aiReasoningEl) {
-                aiReasoningEl.hidden = true;
-              }
-              
-              // Re-render events
-              renderEvents();
-              
-              console.log('clearFilters completed, fetched', filteredEvents.length, 'events from database');
-            } else {
-              console.error('Failed to fetch all events:', data.error);
-              // Fallback to current events if fetch fails
-              filteredEvents = [...allEvents];
-              renderEvents();
-            }
-          })
-          .catch(error => {
-            console.error('Error fetching all events:', error);
-            // Fallback to current events if fetch fails
-            filteredEvents = [...allEvents];
-            renderEvents();
-          });
+         // Fetch ALL events from database (reset query logic)
+         console.log('Fetching all events from database...');
+         fetch('/api/get-events?limit=2000')
+           .then(response => {
+             console.log('Fetch response:', response.status);
+             return response.json();
+           })
+           .then(data => {
+             console.log('Fetch data:', data);
+             if (data.ok && data.events) {
+               // Transform events to match the expected format
+               allEvents = data.events.map(event => ({
+                 id: event.id,
+                 name: event.event_name,
+                 description: event.event_description,
+                 date: event.event_date,
+                 time: event.event_time,
+                 location: event.event_location,
+                 host: event.hosted_by,
+                 price: event.price,
+                 url: event.event_url,
+                 tags: event.event_tags,
+                 usage_tags: event.usage_tags,
+                 industry_tags: event.industry_tags,
+                 women_specific: event.women_specific,
+                 invite_only: event.invite_only,
+                 event_category: event.event_category
+               }));
+               
+               filteredEvents = [...allEvents];
+               console.log('Updated allEvents length:', allEvents.length);
+               populateFilters(allEvents);
+               
+               // Update results title to show all events
+               const resultsTitle = $('results-title');
+               if (resultsTitle) {
+                 resultsTitle.textContent = 'All Events';
+               }
+               
+               // Hide AI reasoning when showing all events
+               if (aiReasoningEl) {
+                 aiReasoningEl.hidden = true;
+               }
+               
+               // Re-render events
+               renderEvents();
+               
+               console.log('clearFilters completed, fetched', filteredEvents.length, 'events from database');
+             } else {
+               console.error('Failed to fetch all events:', data.error);
+               // Fallback to current events if fetch fails
+               filteredEvents = [...allEvents];
+               renderEvents();
+             }
+           })
+           .catch(error => {
+             console.error('Error fetching all events:', error);
+             // Fallback to current events if fetch fails
+             filteredEvents = [...allEvents];
+             renderEvents();
+           });
       }
       
       function renderAIReasoning() {
