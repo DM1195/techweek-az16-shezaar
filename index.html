@@ -1960,8 +1960,7 @@
         try {
           // Prepare current events data to send to the API
           const currentEventsData = allEvents.map(event => ({
-            event_category: event.outfit_category || 'General',
-            outfit_category: event.outfit_category || 'General', // Use outfit_category from events
+            outfit_category: event.outfit_category || 'General',
             name: event.name,
             description: event.description
           }));
@@ -1998,16 +1997,16 @@
 
       function showOutfitRecommendations(data) {
         console.log('🔍 showOutfitRecommendations called with data:', data);
-        const eventCategories = data.eventCategories || [];
+        const outfitCategories = data.outfitCategories || [];
         const outfitRecommendations = data.outfitRecommendations || [];
         const tabs = data.tabs || [];
         
-        console.log('🔍 eventCategories:', eventCategories);
+        console.log('🔍 outfitCategories:', outfitCategories);
         console.log('🔍 outfitRecommendations:', outfitRecommendations);
         console.log('🔍 tabs:', tabs);
         
-        // Store event categories globally for navigation
-        window.currentEventCategories = eventCategories;
+        // Store outfit categories globally for navigation
+        window.currentOutfitCategories = outfitCategories;
         
         // Hide gender selection and show outfit content
         genderSelection.style.display = 'none';
@@ -2020,31 +2019,31 @@
           allOutfitRecommendations = tabs;
           currentOutfitIndex = 0;
           // Show tabbed interface
-          showTabbedOutfitRecommendations(tabs, eventCategories);
+          showTabbedOutfitRecommendations(tabs, outfitCategories);
         } else if (outfitRecommendations.length > 0) {
           allOutfitRecommendations = outfitRecommendations;
           currentOutfitIndex = 0;
           // Show the first recommendation (legacy format)
-          showCurrentOutfitRecommendation(eventCategories);
+          showCurrentOutfitRecommendation(outfitCategories);
         } else {
           // Create a fallback recommendation object
           allOutfitRecommendations = [{
-            event_category: 'General',
+            outfit_category: 'General',
             outfit_recommendation: data.recommendation || 'No outfit recommendation available.',
             reasoning: data.reasoning || ''
           }];
           currentOutfitIndex = 0;
-          showCurrentOutfitRecommendation(eventCategories);
+          showCurrentOutfitRecommendation(outfitCategories);
         }
       }
 
-      function showTabbedOutfitRecommendations(tabs, eventCategories) {
+      function showTabbedOutfitRecommendations(tabs, outfitCategories) {
         if (tabs.length === 0) return;
         
         // Create tab navigation
         const tabNavigation = tabs.map((tab, index) => {
           // Format tab name: capitalize first letter and replace hyphens with spaces
-          const formattedName = tab.event_category
+          const formattedName = tab.outfit_category
             .split('-')
             .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
             .join(' ');
@@ -2086,7 +2085,7 @@
         });
       }
 
-      function showCurrentOutfitRecommendation(eventCategories) {
+      function showCurrentOutfitRecommendation(outfitCategories) {
         if (allOutfitRecommendations.length === 0) return;
         
         const currentRec = allOutfitRecommendations[currentOutfitIndex];
@@ -2126,9 +2125,9 @@
           // Switch to the next tab
           switchTab(currentOutfitIndex);
         } else {
-          // Get event categories from the current data (we'll need to store this globally too)
-          const eventCategories = window.currentEventCategories || [];
-          showCurrentOutfitRecommendation(eventCategories);
+          // Get outfit categories from the current data (we'll need to store this globally too)
+          const outfitCategories = window.currentOutfitCategories || [];
+          showCurrentOutfitRecommendation(outfitCategories);
         }
       }
       
@@ -2199,7 +2198,7 @@
         // Reset global variables
         currentOutfitIndex = 0;
         allOutfitRecommendations = [];
-        window.currentEventCategories = [];
+        window.currentOutfitCategories = [];
       }
       
       function populateFilters(events) {
@@ -2572,7 +2571,7 @@
                  industry_tags: event.industry_tags,
                  women_specific: event.women_specific,
                  invite_only: event.invite_only,
-                 event_category: event.outfit_category
+                 outfit_category: event.outfit_category
                }));
                
                filteredEvents = [...allEvents];

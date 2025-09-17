@@ -230,7 +230,7 @@ module.exports = async function handler(req, res) {
     }
 
     // Extract unique event categories from recommended events
-    const rawEventCategories = [...new Set(recommendedEvents.map(event => event.outfit_category || event.event_category).filter(Boolean))];
+    const rawEventCategories = [...new Set(recommendedEvents.map(event => event.outfit_category).filter(Boolean))];
     
     // Convert kebab-case to title case for database lookup
     const eventCategories = rawEventCategories.map(category => {
@@ -278,7 +278,7 @@ module.exports = async function handler(req, res) {
           .join(' ');
         
         return {
-          event_category: displayCategory,
+          outfit_category: displayCategory,
           outfit_recommendation: rec.recommendation || rec.outfit_recommendation || generateOutfitFromStyleAndComfort(displayCategory, rec.gender, bodyComfort, gender),
           reasoning: rec.reasoning || `This ${rec.gender} style is perfect for ${displayCategory} events.`,
           style_fit: rec.gender,
@@ -288,16 +288,16 @@ module.exports = async function handler(req, res) {
       
       // Combine all recommendations for the categories
       const combinedRecommendation = mappedRecommendations.map(rec => 
-        `**${rec.event_category}**: ${rec.outfit_recommendation}`
+        `**${rec.outfit_category}**: ${rec.outfit_recommendation}`
       ).join('\n\n');
       
       const combinedReasoning = mappedRecommendations.map(rec => 
-        `**${rec.event_category}**: ${rec.reasoning}`
+        `**${rec.outfit_category}**: ${rec.reasoning}`
       ).join('\n\n');
       
       // Create tabs structure for the frontend
       const tabs = mappedRecommendations.map(rec => ({
-        event_category: rec.event_category,
+        outfit_category: rec.outfit_category,
         outfit_recommendation: rec.outfit_recommendation,
         reasoning: rec.reasoning,
         style_fit: rec.style_fit,
@@ -309,24 +309,24 @@ module.exports = async function handler(req, res) {
         ok: true, 
         recommendation: combinedRecommendation,
         reasoning: combinedReasoning,
-        eventCategories: eventCategories,
+        outfitCategories: eventCategories,
         outfitRecommendations: mappedRecommendations,
         tabs: tabs, // New tabbed structure
         count: mappedRecommendations.length,
-        message: `Found ${mappedRecommendations.length} outfit recommendations for your event categories.`
+        message: `Found ${mappedRecommendations.length} outfit recommendations for your outfit categories.`
       });
     }
 
     // No outfit recommendations found in database - return empty response
     return res.status(200).json({ 
       ok: true, 
-      recommendation: "No outfit recommendations found in our database for your event categories.",
-      reasoning: "We couldn't find outfit recommendations in our database for your selected event categories and preferences.",
-      eventCategories: eventCategories,
+      recommendation: "No outfit recommendations found in our database for your outfit categories.",
+      reasoning: "We couldn't find outfit recommendations in our database for your selected outfit categories and preferences.",
+      outfitCategories: eventCategories,
       outfitRecommendations: [],
       tabs: [], // Empty tabs array
       count: 0,
-      message: "No outfit recommendations found in our database for your event categories."
+      message: "No outfit recommendations found in our database for your outfit categories."
     });
 
   } catch (error) {
