@@ -108,6 +108,7 @@ async function getOutfitRecommendationsFromSupabase(eventCategories, gender) {
     );
     
     console.log('🔍 Database query categories (kebab-case):', dbCategories);
+    console.log('🔍 Querying table:', OUTFIT_TABLE);
     
     let query = supabase
       .from(OUTFIT_TABLE)
@@ -136,12 +137,13 @@ async function getOutfitRecommendationsFromSupabase(eventCategories, gender) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching outfit recommendations:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
+      console.error('❌ Error fetching outfit recommendations:', error);
+      console.error('❌ Error details:', JSON.stringify(error, null, 2));
       return [];
     }
 
     console.log(`✅ Found ${data?.length || 0} outfit recommendations from database`);
+    console.log('🔍 Database response data:', data);
     return data || [];
   } catch (error) {
     console.error('Error in getOutfitRecommendationsFromSupabase:', error);

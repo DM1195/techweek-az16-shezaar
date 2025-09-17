@@ -1960,11 +1960,14 @@
         try {
           // Prepare current events data to send to the API
           const currentEventsData = allEvents.map(event => ({
-            event_category: event.event_category || 'General',
-            outfit_category: event.event_category || 'General', // Add outfit_category for API compatibility
+            event_category: event.outfit_category || 'General',
+            outfit_category: event.outfit_category || 'General', // Use outfit_category from events
             name: event.name,
             description: event.description
           }));
+          
+          console.log('🔍 Sample event data:', allEvents[0]);
+          console.log('🔍 Prepared currentEventsData:', currentEventsData.slice(0, 2));
           
           const resp = await fetch('/api/recommend-outfit', {
             method: 'POST', 
@@ -2569,7 +2572,7 @@
                  industry_tags: event.industry_tags,
                  women_specific: event.women_specific,
                  invite_only: event.invite_only,
-                 event_category: event.event_category
+                 event_category: event.outfit_category
                }));
                
                filteredEvents = [...allEvents];
