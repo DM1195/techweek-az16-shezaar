@@ -2304,16 +2304,36 @@
       }
       
       
+      // Helper function to safely parse JSONB arrays
+      function parseJsonbArray(value) {
+        if (!value) return [];
+        if (Array.isArray(value)) return value;
+        if (typeof value === 'string') {
+          try {
+            return JSON.parse(value);
+          } catch (e) {
+            console.warn('Failed to parse JSONB array:', value);
+            return [];
+          }
+        }
+        return [];
+      }
+
       function applyFilters() {
         filteredEvents = allEvents.filter(event => {
           const dayMatch = selectedDays.length === 0 || 
                           selectedDays.some(day => event.date?.includes(day) || getDayFromDate(event.date) === day);
           const locationMatch = selectedLocations.length === 0 || 
                                selectedLocations.includes(event.location);
+          
+          // Safely parse JSONB arrays
+          const eventIndustryTags = parseJsonbArray(event.industry_tags);
+          const eventUsageTags = parseJsonbArray(event.usage_tags);
+          
           const industryMatch = selectedIndustries.length === 0 || 
-                                (event.industry_tags && selectedIndustries.some(industry => event.industry_tags.includes(industry)));
+                                selectedIndustries.some(industry => eventIndustryTags.includes(industry));
           const typeMatch = selectedTypes.length === 0 || 
-                            (event.usage_tags && selectedTypes.some(type => event.usage_tags.includes(type)));
+                            selectedTypes.some(type => eventUsageTags.includes(type));
           
           return dayMatch && locationMatch && industryMatch && typeMatch;
         });
@@ -2350,8 +2370,10 @@
             case 'relevance':
             default:
               // Prioritize industry-specific events first
-              const aHasIndustryTags = a.industry_tags && a.industry_tags.length > 0;
-              const bHasIndustryTags = b.industry_tags && b.industry_tags.length > 0;
+              const aIndustryTags = parseJsonbArray(a.industry_tags);
+              const bIndustryTags = parseJsonbArray(b.industry_tags);
+              const aHasIndustryTags = aIndustryTags.length > 0;
+              const bHasIndustryTags = bIndustryTags.length > 0;
               
               // If one has industry tags and the other doesn't, prioritize the one with industry tags
               if (aHasIndustryTags && !bHasIndustryTags) return -1;
