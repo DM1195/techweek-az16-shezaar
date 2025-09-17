@@ -2102,8 +2102,9 @@
         
         // Create tab content
         const tabContent = tabs.map((tab, index) => {
+          // Create products HTML but hide it initially
           const productsHtml = tab.products && tab.products.length > 0 ? `
-            <div class="outfit-products">
+            <div class="outfit-products" style="display: none;">
               <h5>Shop This Look</h5>
               <div class="outfit-products-grid">
                 ${tab.products.map(product => `
@@ -2118,7 +2119,7 @@
               </div>
             </div>
           ` : `
-            <div class="outfit-products">
+            <div class="outfit-products" style="display: none;">
               <h5>Shop This Look</h5>
               <div class="no-products-message">
                 <p>Oh damn! We don't have any products that match this suggestion. But check again soon cause we are adding new ones!</p>
@@ -2163,7 +2164,7 @@
         const currentRec = allOutfitRecommendations[currentOutfitIndex];
         
         const productsHtml = currentRec.products && currentRec.products.length > 0 ? `
-          <div class="outfit-products">
+          <div class="outfit-products" style="display: none;">
             <h5>Shop This Look</h5>
             <div class="outfit-products-grid">
               ${currentRec.products.map(product => `
@@ -2178,7 +2179,7 @@
             </div>
           </div>
         ` : `
-          <div class="outfit-products">
+          <div class="outfit-products" style="display: none;">
             <h5>Shop This Look</h5>
             <div class="no-products-message">
               <p>Oh damn! We don't have any products that match this suggestion. But check again soon cause we are adding new ones!</p>
@@ -2253,7 +2254,7 @@
           const tabContent = outfitContent.querySelector(`.outfit-tab-content[data-tab-index="${tabIndex}"]`);
           if (tabContent) {
             const productsHtml = nextRec.products && nextRec.products.length > 0 ? `
-              <div class="outfit-products">
+              <div class="outfit-products" style="display: none;">
                 <h5>Shop This Look</h5>
                 <div class="outfit-products-grid">
                   ${nextRec.products.map(product => `
@@ -2268,7 +2269,7 @@
                 </div>
               </div>
             ` : `
-              <div class="outfit-products">
+              <div class="outfit-products" style="display: none;">
                 <h5>Shop This Look</h5>
                 <div class="no-products-message">
                   <p>Oh damn! We don't have any products that match this suggestion. But check again soon cause we are adding new ones!</p>
@@ -2295,16 +2296,20 @@
       
       function showShopThisLook() {
         // This function is called when "Shop For Products" button is clicked
-        // The products are already displayed within each outfit tab in the "Shop This Look" section
-        // We just need to ensure the outfit content is visible and scroll to the products
+        // Show the products section within each outfit tab
         
         // Make sure outfit content is visible
         outfitContent.style.display = 'block';
         
-        // If we're using tabs, scroll to the first tab's products section
+        // If we're using tabs, show products for all tabs
         const hasTabs = outfitContent.querySelector('.outfit-tabs-container');
         if (hasTabs) {
-          // Find the active tab's products section
+          // Show products section for all tabs
+          outfitContent.querySelectorAll('.outfit-products').forEach(productsSection => {
+            productsSection.style.display = 'block';
+          });
+          
+          // Find the active tab's products section and scroll to it
           const activeTab = outfitContent.querySelector('.outfit-tab.active');
           if (activeTab) {
             const tabIndex = parseInt(activeTab.dataset.tabIndex);
@@ -2317,9 +2322,10 @@
             }
           }
         } else {
-          // For non-tabbed interface, scroll to the products section
+          // For non-tabbed interface, show and scroll to the products section
           const productsSection = outfitContent.querySelector('.outfit-products');
           if (productsSection) {
+            productsSection.style.display = 'block';
             productsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         }
