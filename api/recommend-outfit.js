@@ -93,7 +93,7 @@ function generateOutfitFromStyleAndComfort(eventCategory, styleFit, bodyComfort,
 }
 
 // Get outfit recommendations from Supabase based on event categories and gender
-async function getOutfitRecommendationsFromSupabase(eventCategories, gender) {
+async function getOutfitRecommendationsFromSupabase(eventCategories, gender, rawEventCategories = []) {
   try {
     const supabase = getSupabaseClient();
     if (!supabase) {
@@ -107,8 +107,22 @@ async function getOutfitRecommendationsFromSupabase(eventCategories, gender) {
       category.toLowerCase().replace(/\s+/g, '-')
     );
     
+    console.log('🔍 Raw event categories from frontend:', rawEventCategories);
+    console.log('🔍 Normalized event categories:', eventCategories);
     console.log('🔍 Database query categories (kebab-case):', dbCategories);
     console.log('🔍 Querying table:', OUTFIT_TABLE);
+    
+    // First, let's check what outfit categories actually exist in the database
+    const { data: allOutfitData, error: allError } = await supabase
+      .from(OUTFIT_TABLE)
+      .select('outfit_category, gender')
+      .limit(10);
+    
+    if (allError) {
+      console.error('❌ Error checking database contents:', allError);
+    } else {
+      console.log('🔍 Sample outfit categories in database:', allOutfitData);
+    }
     
     let query = supabase
       .from(OUTFIT_TABLE)
@@ -245,7 +259,7 @@ module.exports = async function handler(req, res) {
     }
 
     // Get outfit recommendations from Supabase for these categories and gender
-    const outfitRecommendations = await getOutfitRecommendationsFromSupabase(eventCategories, gender);
+    const outfitRecommendations = await getOutfitRecommendationsFromSupabase(eventCategories, gender, rawEventCategories);
     
     console.log('Event categories:', eventCategories);
     console.log('Gender:', gender);
