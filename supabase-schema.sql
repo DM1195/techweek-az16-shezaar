@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS "Event List" (
   women_specific BOOLEAN DEFAULT FALSE, -- Whether the event is specifically for women
   invite_only BOOLEAN DEFAULT FALSE,
   event_name_and_link TEXT,
+  outfit_category TEXT, -- Outfit category for recommendations (business-casual, casual, activity, etc.)
   embedding VECTOR(1536), -- For semantic search
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -48,6 +49,7 @@ CREATE INDEX IF NOT EXISTS idx_event_list_industry_tags ON "Event List" USING GI
 CREATE INDEX IF NOT EXISTS idx_event_list_event_tags ON "Event List" USING GIN(event_tags);
 CREATE INDEX IF NOT EXISTS idx_event_list_event_date ON "Event List"(event_date);
 CREATE INDEX IF NOT EXISTS idx_event_list_updated_at ON "Event List"(updated_at);
+CREATE INDEX IF NOT EXISTS idx_event_list_outfit_category ON "Event List"(outfit_category);
 
 -- Optional: Create a view for analytics
 CREATE OR REPLACE VIEW interaction_analytics AS
@@ -65,7 +67,7 @@ ORDER BY date DESC, interaction_type;
 -- Table for outfit recommendations
 CREATE TABLE IF NOT EXISTS "Outfit Recommendations" (
   id SERIAL PRIMARY KEY,
-  event_category TEXT NOT NULL, -- Event type (Business Casual, Activity, etc.)
+  outfit_category TEXT NOT NULL, -- Event type (business-casual, activity, etc.)
   gender TEXT NOT NULL, -- Gender preference (female, male, gender-neutral)
   body_comfort TEXT NOT NULL, -- Comfort level (modest, bold, mid)
   outfit_recommendation TEXT, -- The actual outfit recommendation text
@@ -75,7 +77,7 @@ CREATE TABLE IF NOT EXISTS "Outfit Recommendations" (
 );
 
 -- Create indexes for outfit recommendations
-CREATE INDEX IF NOT EXISTS idx_outfit_recommendations_event_category ON "Outfit Recommendations"(event_category);
+CREATE INDEX IF NOT EXISTS idx_outfit_recommendations_outfit_category ON "Outfit Recommendations"(outfit_category);
 CREATE INDEX IF NOT EXISTS idx_outfit_recommendations_gender ON "Outfit Recommendations"(gender);
 CREATE INDEX IF NOT EXISTS idx_outfit_recommendations_body_comfort ON "Outfit Recommendations"(body_comfort);
 
