@@ -102,12 +102,19 @@ async function getOutfitRecommendationsFromSupabase(eventCategories, gender) {
     }
 
     // Build query for outfit recommendations
+    // Convert title case back to kebab-case for database query
+    const dbCategories = eventCategories.map(category => 
+      category.toLowerCase().replace(/\s+/g, '-')
+    );
+    
+    console.log('🔍 Database query categories (kebab-case):', dbCategories);
+    
     let query = supabase
       .from(OUTFIT_TABLE)
       .select('*')
-      .in('outfit_category', eventCategories);
+      .in('outfit_category', dbCategories);
 
-    console.log('Querying outfit recommendations for categories:', eventCategories);
+    console.log('Querying outfit recommendations for categories:', dbCategories);
     
     // Filter by gender if specified
     if (gender) {
@@ -207,7 +214,20 @@ module.exports = async function handler(req, res) {
     }
 
     // Extract unique event categories from recommended events
-    const eventCategories = [...new Set(recommendedEvents.map(event => event.event_category).filter(Boolean))];
+    const rawEventCategories = [...new Set(recommendedEvents.map(event => event.outfit_category || event.event_category).filter(Boolean))];
+    
+    // Convert kebab-case to title case for database lookup
+    const eventCategories = rawEventCategories.map(category => {
+      return category
+        .toLowerCase()
+        .split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    });
+    
+    console.log('🔍 Raw event categories:', rawEventCategories);
+    console.log('🔍 Normalized event categories:', eventCategories);
+    console.log('🔍 Sample recommended event:', recommendedEvents[0]);
     
     if (eventCategories.length === 0) {
       console.log('⚠️ No event categories found to base outfit recommendations on');
@@ -233,10 +253,18 @@ module.exports = async function handler(req, res) {
       // Map database records to the expected format
       const mappedRecommendations = outfitRecommendations.map(rec => {
         const bodyComfort = rec.body_comfort || 'mid'; // Default to 'mid' if not specified
+        
+        // Convert kebab-case outfit_category to title case for display
+        const displayCategory = rec.outfit_category
+          .toLowerCase()
+          .split('-')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+        
         return {
-          event_category: rec.outfit_category,
-          outfit_recommendation: rec.recommendation || rec.outfit_recommendation || generateOutfitFromStyleAndComfort(rec.outfit_category, rec.gender, bodyComfort, gender),
-          reasoning: rec.reasoning || `This ${rec.gender} style is perfect for ${rec.outfit_category} events.`,
+          event_category: displayCategory,
+          outfit_recommendation: rec.recommendation || rec.outfit_recommendation || generateOutfitFromStyleAndComfort(displayCategory, rec.gender, bodyComfort, gender),
+          reasoning: rec.reasoning || `This ${rec.gender} style is perfect for ${displayCategory} events.`,
           style_fit: rec.gender,
           body_comfort: bodyComfort
         };

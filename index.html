@@ -1961,6 +1961,7 @@
           // Prepare current events data to send to the API
           const currentEventsData = allEvents.map(event => ({
             event_category: event.event_category || 'General',
+            outfit_category: event.event_category || 'General', // Add outfit_category for API compatibility
             name: event.name,
             description: event.description
           }));
@@ -1971,6 +1972,7 @@
             body: JSON.stringify({ message, gender, currentEvents: currentEventsData })
           });
           const data = await resp.json();
+          console.log('🔍 Outfit API response:', data);
           if (!data.ok) throw new Error(data.error || 'Failed');
           
           // Display outfit recommendations in modal
@@ -1992,9 +1994,14 @@
       let allOutfitRecommendations = [];
 
       function showOutfitRecommendations(data) {
+        console.log('🔍 showOutfitRecommendations called with data:', data);
         const eventCategories = data.eventCategories || [];
         const outfitRecommendations = data.outfitRecommendations || [];
         const tabs = data.tabs || [];
+        
+        console.log('🔍 eventCategories:', eventCategories);
+        console.log('🔍 outfitRecommendations:', outfitRecommendations);
+        console.log('🔍 tabs:', tabs);
         
         // Store event categories globally for navigation
         window.currentEventCategories = eventCategories;
