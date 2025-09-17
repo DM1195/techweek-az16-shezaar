@@ -1800,6 +1800,42 @@
       let selectedLocations = [];
       let selectedIndustries = [];
       let selectedTypes = [];
+      
+      // Define industry categories that group related tags
+      const industryCategories = {
+        'AI & Machine Learning': ['ai', 'artificial-intelligence', 'machine-learning', 'ml', 'generative-ai', 'deep-tech'],
+        'Blockchain & Crypto': ['blockchain', 'crypto', 'web3', 'digital-assets'],
+        'Fintech': ['fintech', 'finance', 'financial-services', 'payments', 'banking', 'trading', 'investment', 'venture-capital', 'private-equity'],
+        'Health & Biotech': ['healthtech', 'biotech', 'biotechnology', 'healthcare', 'health', 'medical-devices', 'pharmaceuticals', 'life-sciences', 'therapeutics'],
+        'Fashion & Beauty': ['fashion', 'fashion-tech', 'beauty', 'luxury'],
+        'Gaming & Entertainment': ['gaming', 'game-development', 'entertainment', 'media', 'music', 'music-tech', 'film', 'animation', 'social-gaming'],
+        'Enterprise & B2B': ['enterprise', 'b2b', 'b2b-saas', 'saas', 'enterprise-software', 'business-services', 'consulting'],
+        'Consumer & E-commerce': ['consumer', 'consumer-tech', 'e-commerce', 'marketplace', 'consumer-electronics'],
+        'Sustainability & Climate': ['sustainability', 'climate-tech', 'environmental', 'circular-economy'],
+        'Cybersecurity': ['cybersecurity', 'security', 'privacy', 'privacy-tech', 'data-security', 'identity-verification'],
+        'Education & EdTech': ['edtech', 'education', 'professional-development'],
+        'Real Estate & Proptech': ['real-estate', 'proptech', 'construction', 'construction-tech'],
+        'Mobility & Transportation': ['mobility', 'autonomous-systems', 'electric-vehicles', 'logistics'],
+        'Space & Aerospace': ['space-tech', 'aerospace', 'aviation'],
+        'Robotics & Hardware': ['robotics', 'hardware', 'iot', 'automation', 'manufacturing', 'industrial'],
+        'Data & Analytics': ['data', 'data-science', 'data-analytics', 'analytics', 'business-intelligence'],
+        'Marketing & Sales': ['marketing', 'sales', 'growth-marketing', 'advertising', 'branding', 'social-media'],
+        'Legal & Compliance': ['legal', 'compliance', 'governance', 'policy'],
+        'HR & People': ['hr', 'hr-tech', 'human-resources', 'talent-acquisition'],
+        'Non-Profit & Social Impact': ['non-profit', 'nonprofit', 'social-impact', 'charity', 'community', 'diversity-and-inclusion']
+      };
+      
+      // Define usage tag categories that group related tags
+      const usageCategories = {
+        'Networking & Meeting People': ['networking', 'meeting-people', 'meeting-founders', 'meeting-investors', 'meeting-advisors', 'meeting-mentors', 'meeting-peers', 'meeting-experts', 'meeting-leaders', 'meeting-talent', 'meeting-others-in-tech', 'socializing', 'casual-conversations', 'fostering-connection', 'building-connections', 'building-relationships', 'strengthening-relationships'],
+        'Learning & Skill Development': ['learning', 'learning-skills', 'learning-ai', 'learning-entrepreneurship', 'learning-fundraising', 'learning-pitching-skills', 'learning-communication-skills', 'learning-leadership-skills', 'learning-best-practices', 'learning-strategies', 'learning-industry-insights', 'learning-market-insights', 'learning-funding-landscape', 'learning-investment-strategies', 'learning-global-expansion', 'learning-immigration-strategies', 'learning-ip', 'learning-mental-fitness', 'learning-podcasting-skills', 'learning-3d-production', 'learning-ai-coding', 'learning-ai-practices', 'learning-ai-strategies', 'learning-cryptocurrency', 'learning-customer-insights', 'learning-fertility-options', 'learning-visa-classifications', 'learning-about-hormones', 'professional-development', 'career-growth', 'communication-training', 'cross-cultural-awareness'],
+        'Business & Fundraising': ['fundraising', 'fundraising-opportunities', 'fundraising-strategies', 'business-fundraising', 'business-activities', 'business-activities-fundraising', 'business-activities-pitching', 'business-activities-product-demos', 'business-activities-visa-application', 'business-collaboration', 'business-networking', 'business-pitching', 'business-strategy', 'business-advisory', 'business-activities-collaboration', 'pitching', 'pitching-ideas', 'product-demos', 'product-development', 'showcasing-startups', 'portfolio-diversification'],
+        'Finding Partners & Talent': ['meeting-cofounders', 'meeting-talent', 'meeting-potential-customers', 'meeting-potential-employers', 'meeting-advisors', 'meeting-mentors', 'meeting-creators', 'meeting-data-leaders', 'meeting-finance-leaders', 'meeting-industry-experts', 'meeting-industry-leaders', 'meeting-industry-peers', 'meeting-innovators', 'meeting-investors', 'meeting-leaders', 'meeting-legal-experts', 'meeting-media-professionals', 'meeting-researchers', 'meeting-visionaries', 'meeting-people-advisors', 'meeting-people-founders', 'meeting-people-industry-experts', 'connecting-investors', 'connecting-with-partner'],
+        'Industry Insights & Trends': ['industry-insights', 'industry-engagement', 'industry-engagement-innovation', 'industry-engagement-trends', 'gaining-insights', 'gaining-health-insights', 'sharing-insights', 'exploring-opportunities', 'exploring-solutions', 'exploring-technology-solutions', 'exploring-innovation-strategies', 'exploring-geospatial-tech', 'exploring-wearable-tech', 'discussing-governance', 'collaborating-with-ai'],
+        'Collaboration & Partnerships': ['collaboration', 'collaboration-opportunities', 'collaboration-startups-and-law-firms', 'business-collaboration', 'business-activities-collaboration', 'building-relationships', 'strengthening-relationships', 'team-building', 'enhancing-employee-engagement', 'supporting-burnout-prevention', 'promoting-eudaemonic-wellbeing'],
+        'Professional Development': ['professional-development', 'professional-development-career-growth', 'professional-development-mentorship', 'professional-development-networking', 'professional-networking', 'career-growth', 'networking-professional-development', 'networking-professionals', 'networking-with-developers', 'networking-with-experts', 'networking-with-finance-leaders', 'networking-with-founders', 'networking-with-industry-leaders', 'networking-with-investors', 'networking-with-leaders', 'networking-with-marketers', 'networking-with-peers', 'networking-founders', 'networking-founders-engineers', 'networking-investors', 'networking-marketers', 'networking-mentors', 'networking-mentorship', 'networking-opportunities'],
+        'Building & Creating': ['building-apps', 'building-data-apps', 'building-influence', 'building-connections', 'building-relationships', 'creating-memories', 'product-development', 'product-demos', 'showcasing-startups']
+      };
 
       // Function to log user interactions to Supabase
       async function logInteraction(type, data) {
@@ -2167,20 +2203,22 @@
           if (option) option.classList.add('selected');
         });
         
-        // Populate industry filter from centralized config
-        const industryTags = [
-          'ai-ml', 'fintech', 'healthtech', 'edtech', 'cybersecurity',
-          'blockchain', 'sustainability', 'biotech', 'quantum',
-          'enterprise', 'consumer', 'startup', 'media', 'gaming',
-          'mobility', 'real-estate', 'legal', 'hr', 'sales', 'marketing',
-          'fashion-tech', 'food-tech', 'space', 'robotics'
-        ];
         
-        industryDropdown.innerHTML = industryTags.map(industry => {
-          const displayName = industry.split('-').map(word => 
-            word.charAt(0).toUpperCase() + word.slice(1)
-          ).join(' ');
-          return `<div class="multi-select-option" data-value="${industry}">${displayName}</div>`;
+        // Check which categories have events
+        const availableCategories = [];
+        Object.entries(industryCategories).forEach(([category, tags]) => {
+          const hasEvents = events.some(event => {
+            if (!event.industry_tags) return false;
+            const eventTags = parseJsonbArray(event.industry_tags);
+            return tags.some(tag => eventTags.includes(tag));
+          });
+          if (hasEvents) {
+            availableCategories.push(category);
+          }
+        });
+        
+        industryDropdown.innerHTML = availableCategories.map(category => {
+          return `<div class="multi-select-option" data-value="${category}">${category}</div>`;
         }).join('');
         
         // Restore selected states for industry filter
@@ -2189,21 +2227,22 @@
           if (option) option.classList.add('selected');
         });
         
-        // Populate type filter from centralized usage tags
-        const typeTags = [
-          'find-cofounder', 'find-investors', 'find-angels', 'find-talent', 'find-customers',
-          'find-advisors', 'find-partners', 'get-feedback', 'learn-skills', 'industry-insights', 'networking',
-          'pitch-opportunities', 'fundraising', 'product-launch', 'women-specific',
-          // Additional usage tags found in the data
-          'meeting-people', 'meeting-founders', 'meeting-investors', 'learning', 'business-activities',
-          'professional-development', 'industry-engagement', 'pitching', 'business-collaboration'
-        ];
         
-        typeDropdown.innerHTML = typeTags.map(type => {
-          const displayName = type.replace(/-/g, ' ').split(' ').map(word => 
-            word.charAt(0).toUpperCase() + word.slice(1)
-          ).join(' ');
-          return `<div class="multi-select-option" data-value="${type}">${displayName}</div>`;
+        // Check which categories have events
+        const availableUsageCategories = [];
+        Object.entries(usageCategories).forEach(([category, tags]) => {
+          const hasEvents = events.some(event => {
+            if (!event.usage_tags) return false;
+            const eventTags = parseJsonbArray(event.usage_tags);
+            return tags.some(tag => eventTags.includes(tag));
+          });
+          if (hasEvents) {
+            availableUsageCategories.push(category);
+          }
+        });
+        
+        typeDropdown.innerHTML = availableUsageCategories.map(category => {
+          return `<div class="multi-select-option" data-value="${category}">${category}</div>`;
         }).join('');
         
         // Restore selected states for type filter
@@ -2327,13 +2366,21 @@
                                selectedLocations.includes(event.location);
           
           // Safely parse JSONB arrays
-          const eventIndustryTags = parseJsonbArray(event.industry_tags);
-          const eventUsageTags = parseJsonbArray(event.usage_tags);
-          
-          const industryMatch = selectedIndustries.length === 0 || 
-                                selectedIndustries.some(industry => eventIndustryTags.includes(industry));
+        const eventIndustryTags = parseJsonbArray(event.industry_tags);
+        const eventUsageTags = parseJsonbArray(event.usage_tags);
+        
+        // Check if event matches any selected industry categories
+        const industryMatch = selectedIndustries.length === 0 || 
+                              selectedIndustries.some(selectedCategory => {
+                                const categoryTags = industryCategories[selectedCategory] || [];
+                                return categoryTags.some(tag => eventIndustryTags.includes(tag));
+                              });
+          // Check if event matches any selected usage categories
           const typeMatch = selectedTypes.length === 0 || 
-                            selectedTypes.some(type => eventUsageTags.includes(type));
+                            selectedTypes.some(selectedCategory => {
+                              const categoryTags = usageCategories[selectedCategory] || [];
+                              return categoryTags.some(tag => eventUsageTags.includes(tag));
+                            });
           
           return dayMatch && locationMatch && industryMatch && typeMatch;
         });
@@ -2529,7 +2576,7 @@
         }
         
         // Extract industry focus from the reasoning
-        let industryFocus = 'fashion technology'; // default
+        let industryFocus = 'Fashion & Beauty'; // default
         if (aiReasoning.relevance_suggestions && aiReasoning.relevance_suggestions.primary_criteria) {
           const primaryCriteria = aiReasoning.relevance_suggestions.primary_criteria;
           if (Array.isArray(primaryCriteria) && primaryCriteria.length > 0) {
@@ -2539,15 +2586,12 @@
               criteria.toLowerCase().includes('industry')
             );
             if (industryMatch) {
-              // Extract industry name from the criteria
-              if (industryMatch.toLowerCase().includes('fashion')) {
-                industryFocus = 'fashion technology';
-              } else if (industryMatch.toLowerCase().includes('ai')) {
-                industryFocus = 'artificial intelligence';
-              } else if (industryMatch.toLowerCase().includes('fintech')) {
-                industryFocus = 'fintech';
-              } else if (industryMatch.toLowerCase().includes('health')) {
-                industryFocus = 'health technology';
+              // Find matching category
+              for (const [category, tags] of Object.entries(industryCategories)) {
+                if (tags.some(tag => industryMatch.toLowerCase().includes(tag))) {
+                  industryFocus = category;
+                  break;
+                }
               }
             }
           }
