@@ -1318,6 +1318,91 @@
         display: block;
       }
 
+      /* Products within outfit tabs */
+      .outfit-products {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(218, 222, 216, 0.2);
+      }
+
+      .outfit-products h5 {
+        margin: 0 0 12px 0;
+        color: #daded8;
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .outfit-products-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .outfit-product-item {
+        background: rgba(44, 52, 36, 0.4);
+        border: 1px solid rgba(218, 222, 216, 0.15);
+        border-radius: 8px;
+        padding: 12px;
+        transition: all 0.3s ease;
+      }
+
+      .outfit-product-item:hover {
+        background: rgba(44, 52, 36, 0.6);
+        border-color: rgba(218, 222, 216, 0.3);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .outfit-product-image {
+        width: 100%;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 6px;
+        margin-bottom: 8px;
+      }
+
+      .outfit-product-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: #daded8;
+        margin-bottom: 4px;
+        line-height: 1.3;
+      }
+
+      .outfit-product-brand {
+        font-size: 12px;
+        color: rgba(218, 222, 216, 0.7);
+        margin-bottom: 6px;
+      }
+
+      .outfit-product-price {
+        font-size: 14px;
+        font-weight: 600;
+        color: #4c583e;
+        margin-bottom: 8px;
+      }
+
+      .outfit-product-link {
+        display: inline-block;
+        background: rgba(76, 88, 62, 0.8);
+        color: #daded8;
+        text-decoration: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        text-align: center;
+        width: 100%;
+      }
+
+      .outfit-product-link:hover {
+        background: rgba(76, 88, 62, 1);
+        color: #ffffff;
+        transform: translateY(-1px);
+      }
+
       @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
@@ -1339,6 +1424,19 @@
 
         .outfit-tab.active {
           border-bottom-color: rgba(218, 222, 216, 0.5);
+        }
+        
+        .outfit-products-grid {
+          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+          gap: 8px;
+        }
+        
+        .outfit-product-item {
+          padding: 8px;
+        }
+        
+        .outfit-product-image {
+          height: 100px;
         }
       }
 
@@ -2062,14 +2160,34 @@
         }).join('');
         
         // Create tab content
-        const tabContent = tabs.map((tab, index) => `
-          <div class="outfit-tab-content ${index === 0 ? 'active' : ''}" data-tab-index="${index}">
-            <div class="outfit-recommendation">
-              <p><strong>Outfit:</strong> ${tab.outfit_recommendation}</p>
-              <p><strong>Why this outfit:</strong> ${tab.reasoning}</p>
+        const tabContent = tabs.map((tab, index) => {
+          const productsHtml = tab.products && tab.products.length > 0 ? `
+            <div class="outfit-products">
+              <h5>Shop This Look</h5>
+              <div class="outfit-products-grid">
+                ${tab.products.map(product => `
+                  <div class="outfit-product-item">
+                    ${product.product_image ? `<img src="${product.product_image}" alt="${product.product_name}" class="outfit-product-image" onerror="this.style.display='none'">` : ''}
+                    <div class="outfit-product-name">${product.product_name || 'Product Name'}</div>
+                    ${product.brand_name ? `<div class="outfit-product-brand">${product.brand_name}</div>` : ''}
+                    <div class="outfit-product-price">${product.product_price || 'Price TBA'}</div>
+                    ${product.product_link ? `<a href="${product.product_link}" target="_blank" class="outfit-product-link">View Product</a>` : ''}
+                  </div>
+                `).join('')}
+              </div>
             </div>
-          </div>
-        `).join('');
+          ` : '';
+          
+          return `
+            <div class="outfit-tab-content ${index === 0 ? 'active' : ''}" data-tab-index="${index}">
+              <div class="outfit-recommendation">
+                <p><strong>Outfit:</strong> ${tab.outfit_recommendation}</p>
+                <p><strong>Why this outfit:</strong> ${tab.reasoning}</p>
+              </div>
+              ${productsHtml}
+            </div>
+          `;
+        }).join('');
         
         outfitContent.innerHTML = `
           <div class="outfit-tabs-container">
@@ -2096,11 +2214,29 @@
         
         const currentRec = allOutfitRecommendations[currentOutfitIndex];
         
+        const productsHtml = currentRec.products && currentRec.products.length > 0 ? `
+          <div class="outfit-products">
+            <h5>Shop This Look</h5>
+            <div class="outfit-products-grid">
+              ${currentRec.products.map(product => `
+                <div class="outfit-product-item">
+                  ${product.product_image ? `<img src="${product.product_image}" alt="${product.product_name}" class="outfit-product-image" onerror="this.style.display='none'">` : ''}
+                  <div class="outfit-product-name">${product.product_name || 'Product Name'}</div>
+                  ${product.brand_name ? `<div class="outfit-product-brand">${product.brand_name}</div>` : ''}
+                  <div class="outfit-product-price">${product.product_price || 'Price TBA'}</div>
+                  ${product.product_link ? `<a href="${product.product_link}" target="_blank" class="outfit-product-link">View Product</a>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : '';
+        
         outfitContent.innerHTML = `
           <div class="outfit-recommendation">
             <p><strong>Outfit:</strong> ${currentRec.outfit_recommendation}</p>
             <p><strong>Why this outfit:</strong> ${currentRec.reasoning}</p>
           </div>
+          ${productsHtml}
         `;
       }
 
@@ -2161,11 +2297,29 @@
           // Update the current tab's content
           const tabContent = outfitContent.querySelector(`.outfit-tab-content[data-tab-index="${tabIndex}"]`);
           if (tabContent) {
+            const productsHtml = nextRec.products && nextRec.products.length > 0 ? `
+              <div class="outfit-products">
+                <h5>Shop This Look</h5>
+                <div class="outfit-products-grid">
+                  ${nextRec.products.map(product => `
+                    <div class="outfit-product-item">
+                      ${product.product_image ? `<img src="${product.product_image}" alt="${product.product_name}" class="outfit-product-image" onerror="this.style.display='none'">` : ''}
+                      <div class="outfit-product-name">${product.product_name || 'Product Name'}</div>
+                      ${product.brand_name ? `<div class="outfit-product-brand">${product.brand_name}</div>` : ''}
+                      <div class="outfit-product-price">${product.product_price || 'Price TBA'}</div>
+                      ${product.product_link ? `<a href="${product.product_link}" target="_blank" class="outfit-product-link">View Product</a>` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : '';
+            
             tabContent.innerHTML = `
               <div class="outfit-recommendation">
                 <p><strong>Outfit:</strong> ${nextRec.outfit_recommendation}</p>
                 <p><strong>Why this outfit:</strong> ${nextRec.reasoning}</p>
               </div>
+              ${productsHtml}
             `;
           }
         } else {

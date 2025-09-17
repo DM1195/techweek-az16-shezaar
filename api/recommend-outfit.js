@@ -134,7 +134,17 @@ async function getOutfitRecommendationsFromSupabase(eventCategories, gender, raw
     
     let query = supabase
       .from(OUTFIT_TABLE)
-      .select('*')
+      .select(`
+        *,
+        "Product List" (
+          id,
+          brand_name,
+          product_name,
+          product_link,
+          product_image,
+          product_price
+        )
+      `)
       .in('outfit_category', dbCategories);
 
     console.log('Querying outfit recommendations for categories:', dbCategories);
@@ -286,11 +296,13 @@ module.exports = async function handler(req, res) {
           .join(' ');
         
         return {
+          id: rec.id,
           outfit_category: displayCategory,
           outfit_recommendation: rec.outfit_recommendation || generateOutfitFromStyleAndComfort(displayCategory, rec.gender, bodyComfort, gender),
           reasoning: rec.reasoning || `This ${rec.gender} style is perfect for ${displayCategory} events.`,
           style_fit: rec.gender,
-          body_comfort: bodyComfort
+          body_comfort: bodyComfort,
+          products: rec["Product List"] || []
         };
       });
       
@@ -309,13 +321,15 @@ module.exports = async function handler(req, res) {
         // Get ALL recommendations for this category
         const categoryRecs = mappedRecommendations.filter(rec => rec.outfit_category === category);
         return {
+          id: categoryRecs[0].id,
           outfit_category: category,
           outfit_recommendation: categoryRecs[0].outfit_recommendation, // First recommendation
           reasoning: categoryRecs[0].reasoning,
           style_fit: categoryRecs[0].style_fit,
           body_comfort: categoryRecs[0].body_comfort,
           count: categoryRecs.length,
-          allRecommendations: categoryRecs // Store all recommendations for cycling
+          allRecommendations: categoryRecs, // Store all recommendations for cycling
+          products: categoryRecs[0].products // Include products for the first recommendation
         };
       });
 

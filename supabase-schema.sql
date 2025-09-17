@@ -81,6 +81,22 @@ CREATE INDEX IF NOT EXISTS idx_outfit_recommendations_outfit_category ON "Outfit
 CREATE INDEX IF NOT EXISTS idx_outfit_recommendations_gender ON "Outfit Recommendations"(gender);
 CREATE INDEX IF NOT EXISTS idx_outfit_recommendations_body_comfort ON "Outfit Recommendations"(body_comfort);
 
+-- Table for products linked to outfit recommendations
+CREATE TABLE IF NOT EXISTS "Product List" (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  brand_name TEXT,
+  product_name TEXT NOT NULL,
+  product_link TEXT,
+  product_image TEXT,
+  product_price TEXT,
+  outfit_recommendation_id INTEGER REFERENCES "Outfit Recommendations"(id) ON DELETE CASCADE
+);
+
+-- Create indexes for product list
+CREATE INDEX IF NOT EXISTS idx_product_list_outfit_recommendation_id ON "Product List"(outfit_recommendation_id);
+CREATE INDEX IF NOT EXISTS idx_product_list_created_at ON "Product List"(created_at);
+
 -- Grant necessary permissions (adjust as needed for your setup)
 -- GRANT SELECT, INSERT ON "Query List" TO authenticated;
 -- GRANT SELECT ON "Outfit Recommendations" TO authenticated;
