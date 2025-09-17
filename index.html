@@ -2433,6 +2433,18 @@
       }
       
       function populateFilters(events) {
+        // Populate day filter (static options)
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        dayDropdown.innerHTML = days.map(day => 
+          `<div class="multi-select-option" data-value="${day}">${day}</div>`
+        ).join('');
+        
+        // Restore selected states for day filter
+        selectedDays.forEach(day => {
+          const option = dayDropdown.querySelector(`[data-value="${day}"]`);
+          if (option) option.classList.add('selected');
+        });
+        
         // Populate location filter
         const locations = [...new Set(events.map(e => e.location).filter(Boolean))].sort();
         locationDropdown.innerHTML = locations.map(loc => 
@@ -2509,6 +2521,12 @@
             }
             
             updateDisplay();
+            console.log('Filter option clicked, selected arrays:', {
+              selectedDays,
+              selectedLocations, 
+              selectedIndustries,
+              selectedTypes
+            });
             applyFilters();
           }
         });
@@ -2581,6 +2599,13 @@
       }
 
       function applyFilters() {
+        console.log('applyFilters called with allEvents length:', allEvents.length);
+        console.log('Selected filters:', {
+          selectedDays,
+          selectedLocations,
+          selectedIndustries, 
+          selectedTypes
+        });
         filteredEvents = allEvents.filter(event => {
           const dayMatch = selectedDays.length === 0 || 
                           selectedDays.some(day => event.date?.includes(day) || getDayFromDate(event.date) === day);
@@ -2606,6 +2631,8 @@
           
           return dayMatch && locationMatch && industryMatch && typeMatch;
         });
+        
+        console.log('After filtering, filteredEvents length:', filteredEvents.length);
         
         // Update results title based on whether filters are applied
         const resultsTitle = $('results-title');
