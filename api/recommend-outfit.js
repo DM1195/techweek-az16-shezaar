@@ -303,15 +303,21 @@ module.exports = async function handler(req, res) {
         `**${rec.outfit_category}**: ${rec.reasoning}`
       ).join('\n\n');
       
-      // Create tabs structure for the frontend
-      const tabs = mappedRecommendations.map(rec => ({
-        outfit_category: rec.outfit_category,
-        outfit_recommendation: rec.outfit_recommendation,
-        reasoning: rec.reasoning,
-        style_fit: rec.style_fit,
-        body_comfort: rec.body_comfort,
-        count: 1
-      }));
+      // Create tabs structure for the frontend - only unique categories
+      const uniqueCategories = [...new Set(mappedRecommendations.map(rec => rec.outfit_category))];
+      const tabs = uniqueCategories.map(category => {
+        // Get ALL recommendations for this category
+        const categoryRecs = mappedRecommendations.filter(rec => rec.outfit_category === category);
+        return {
+          outfit_category: category,
+          outfit_recommendation: categoryRecs[0].outfit_recommendation, // First recommendation
+          reasoning: categoryRecs[0].reasoning,
+          style_fit: categoryRecs[0].style_fit,
+          body_comfort: categoryRecs[0].body_comfort,
+          count: categoryRecs.length,
+          allRecommendations: categoryRecs // Store all recommendations for cycling
+        };
+      });
 
       return res.status(200).json({ 
         ok: true, 

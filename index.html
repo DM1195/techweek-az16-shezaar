@@ -1994,6 +1994,7 @@
       // Global variables for outfit recommendation navigation
       let currentOutfitIndex = 0;
       let allOutfitRecommendations = [];
+      let currentTabRecommendationIndex = {}; // Track current recommendation index for each tab
 
       function showOutfitRecommendations(data) {
         console.log('🔍 showOutfitRecommendations called with data:', data);
@@ -2018,6 +2019,11 @@
         if (tabs.length > 0) {
           allOutfitRecommendations = tabs;
           currentOutfitIndex = 0;
+          // Initialize recommendation indices for each tab
+          currentTabRecommendationIndex = {};
+          tabs.forEach((tab, index) => {
+            currentTabRecommendationIndex[index] = 0;
+          });
           // Show tabbed interface
           showTabbedOutfitRecommendations(tabs, outfitCategories);
         } else if (outfitRecommendations.length > 0) {
@@ -2110,22 +2116,62 @@
         if (selectedTab) selectedTab.classList.add('active');
         if (selectedContent) selectedContent.classList.add('active');
         
+        // Reset recommendation index for this tab to show first recommendation
+        currentTabRecommendationIndex[tabIndex] = 0;
+        
+        // Update the tab content to show the first recommendation
+        const currentTab = allOutfitRecommendations[tabIndex];
+        if (currentTab && currentTab.allRecommendations) {
+          const firstRec = currentTab.allRecommendations[0];
+          if (selectedContent) {
+            selectedContent.innerHTML = `
+              <div class="outfit-recommendation">
+                <p><strong>Outfit:</strong> ${firstRec.outfit_recommendation}</p>
+                <p><strong>Why this outfit:</strong> ${firstRec.reasoning}</p>
+              </div>
+            `;
+          }
+        }
+        
         // Update current index for navigation
         currentOutfitIndex = tabIndex;
       }
 
       function showNextOutfitRecommendation() {
-        if (allOutfitRecommendations.length <= 1) return;
-        
-        currentOutfitIndex = (currentOutfitIndex + 1) % allOutfitRecommendations.length;
-        
         // Check if we're using tabbed interface
         const hasTabs = outfitContent.querySelector('.outfit-tabs-container');
         if (hasTabs) {
-          // Switch to the next tab
-          switchTab(currentOutfitIndex);
+          // Get the currently active tab
+          const activeTab = outfitContent.querySelector('.outfit-tab.active');
+          if (!activeTab) return;
+          
+          const tabIndex = parseInt(activeTab.dataset.tabIndex);
+          const currentTab = allOutfitRecommendations[tabIndex];
+          
+          // Check if this tab has multiple recommendations
+          if (!currentTab.allRecommendations || currentTab.allRecommendations.length <= 1) {
+            console.log('No additional recommendations for this category');
+            return;
+          }
+          
+          // Cycle to the next recommendation for this category
+          currentTabRecommendationIndex[tabIndex] = (currentTabRecommendationIndex[tabIndex] + 1) % currentTab.allRecommendations.length;
+          const nextRec = currentTab.allRecommendations[currentTabRecommendationIndex[tabIndex]];
+          
+          // Update the current tab's content
+          const tabContent = outfitContent.querySelector(`.outfit-tab-content[data-tab-index="${tabIndex}"]`);
+          if (tabContent) {
+            tabContent.innerHTML = `
+              <div class="outfit-recommendation">
+                <p><strong>Outfit:</strong> ${nextRec.outfit_recommendation}</p>
+                <p><strong>Why this outfit:</strong> ${nextRec.reasoning}</p>
+              </div>
+            `;
+          }
         } else {
-          // Get outfit categories from the current data (we'll need to store this globally too)
+          // Legacy non-tabbed interface
+          if (allOutfitRecommendations.length <= 1) return;
+          currentOutfitIndex = (currentOutfitIndex + 1) % allOutfitRecommendations.length;
           const outfitCategories = window.currentOutfitCategories || [];
           showCurrentOutfitRecommendation(outfitCategories);
         }
@@ -2198,6 +2244,7 @@
         // Reset global variables
         currentOutfitIndex = 0;
         allOutfitRecommendations = [];
+        currentTabRecommendationIndex = {};
         window.currentOutfitCategories = [];
       }
       
