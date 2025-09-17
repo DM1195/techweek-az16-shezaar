@@ -1101,7 +1101,7 @@
         box-shadow: none;
         color: rgba(218, 222, 216, 0.8);
         text-decoration: underline;
-        transform: none;
+        transform: translateY(-2px) scale(1.02);
       }
 
       .btn.tertiary:active {
@@ -2352,7 +2352,16 @@
               return (a.name || '').localeCompare(b.name || '');
             case 'relevance':
             default:
-              return 0; // Keep original order for relevance
+              // Prioritize industry-specific events first
+              const aHasIndustryTags = a.industry_tags && a.industry_tags.length > 0;
+              const bHasIndustryTags = b.industry_tags && b.industry_tags.length > 0;
+              
+              // If one has industry tags and the other doesn't, prioritize the one with industry tags
+              if (aHasIndustryTags && !bHasIndustryTags) return -1;
+              if (!aHasIndustryTags && bHasIndustryTags) return 1;
+              
+              // If both have industry tags or both don't, sort by date (newest first)
+              return new Date(b.date || 0) - new Date(a.date || 0);
           }
         });
         
