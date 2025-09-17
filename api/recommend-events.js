@@ -848,6 +848,8 @@ module.exports = async (req, res) => {
       price: e.price,
       url: e.event_url,
       tags: e.event_tags,
+      usage_tags: e.usage_tags,
+      industry_tags: e.industry_tags,
       women_specific: e.women_specific,
       invite_only: e.invite_only,
       event_category: e.outfit_category || generateEventCategory(e.event_name, e.event_description, e.event_tags),

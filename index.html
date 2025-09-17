@@ -2204,18 +2204,8 @@
         });
         
         
-        // Check which categories have events
-        const availableCategories = [];
-        Object.entries(industryCategories).forEach(([category, tags]) => {
-          const hasEvents = events.some(event => {
-            if (!event.industry_tags) return false;
-            const eventTags = parseJsonbArray(event.industry_tags);
-            return tags.some(tag => eventTags.includes(tag));
-          });
-          if (hasEvents) {
-            availableCategories.push(category);
-          }
-        });
+        // Show all industry categories by default
+        const availableCategories = Object.keys(industryCategories);
         
         industryDropdown.innerHTML = availableCategories.map(category => {
           return `<div class="multi-select-option" data-value="${category}">${category}</div>`;
@@ -2228,18 +2218,8 @@
         });
         
         
-        // Check which categories have events
-        const availableUsageCategories = [];
-        Object.entries(usageCategories).forEach(([category, tags]) => {
-          const hasEvents = events.some(event => {
-            if (!event.usage_tags) return false;
-            const eventTags = parseJsonbArray(event.usage_tags);
-            return tags.some(tag => eventTags.includes(tag));
-          });
-          if (hasEvents) {
-            availableUsageCategories.push(category);
-          }
-        });
+        // Show all usage categories by default
+        const availableUsageCategories = Object.keys(usageCategories);
         
         typeDropdown.innerHTML = availableUsageCategories.map(category => {
           return `<div class="multi-select-option" data-value="${category}">${category}</div>`;
