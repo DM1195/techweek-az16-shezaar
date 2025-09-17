@@ -115,7 +115,7 @@ async function getOutfitRecommendationsFromSupabase(eventCategories, gender, raw
     // First, let's check what outfit categories actually exist in the database
     const { data: allOutfitData, error: allError } = await supabase
       .from(OUTFIT_TABLE)
-      .select('outfit_category, gender')
+      .select('event_category, gender')
       .limit(10);
     
     if (allError) {
@@ -127,7 +127,7 @@ async function getOutfitRecommendationsFromSupabase(eventCategories, gender, raw
     let query = supabase
       .from(OUTFIT_TABLE)
       .select('*')
-      .in('outfit_category', dbCategories);
+      .in('event_category', dbCategories);
 
     console.log('Querying outfit recommendations for categories:', dbCategories);
     
@@ -270,8 +270,8 @@ module.exports = async function handler(req, res) {
       const mappedRecommendations = outfitRecommendations.map(rec => {
         const bodyComfort = rec.body_comfort || 'mid'; // Default to 'mid' if not specified
         
-        // Convert kebab-case outfit_category to title case for display
-        const displayCategory = rec.outfit_category
+        // Convert kebab-case event_category to title case for display
+        const displayCategory = rec.event_category
           .toLowerCase()
           .split('-')
           .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -279,7 +279,7 @@ module.exports = async function handler(req, res) {
         
         return {
           outfit_category: displayCategory,
-          outfit_recommendation: rec.recommendation || rec.outfit_recommendation || generateOutfitFromStyleAndComfort(displayCategory, rec.gender, bodyComfort, gender),
+          outfit_recommendation: rec.outfit_recommendation || generateOutfitFromStyleAndComfort(displayCategory, rec.gender, bodyComfort, gender),
           reasoning: rec.reasoning || `This ${rec.gender} style is perfect for ${displayCategory} events.`,
           style_fit: rec.gender,
           body_comfort: bodyComfort
