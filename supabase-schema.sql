@@ -68,6 +68,8 @@ CREATE TABLE IF NOT EXISTS "Outfit Recommendations" (
   event_category TEXT NOT NULL, -- Event type (Business Casual, Activity, etc.)
   gender TEXT NOT NULL, -- Gender preference (female, male, gender-neutral)
   body_comfort TEXT NOT NULL, -- Comfort level (modest, bold, mid)
+  outfit_recommendation TEXT, -- The actual outfit recommendation text
+  reasoning TEXT, -- Why this outfit works for this category
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

@@ -1885,6 +1885,8 @@
           if (allEvents.length > 0) {
             // Populate filter options
             populateFilters(allEvents);
+            // Apply relevance sorting
+            sortEvents();
             // Show filters and results
             filtersEl.hidden = false;
             renderEvents();
@@ -2396,22 +2398,70 @@
               return (a.name || '').localeCompare(b.name || '');
             case 'relevance':
             default:
-              // Prioritize industry-specific events first
-              const aIndustryTags = parseJsonbArray(a.industry_tags);
-              const bIndustryTags = parseJsonbArray(b.industry_tags);
-              const aHasIndustryTags = aIndustryTags.length > 0;
-              const bHasIndustryTags = bIndustryTags.length > 0;
+              // Get current search query
+              const currentQuery = input.value.trim().toLowerCase();
               
-              // If one has industry tags and the other doesn't, prioritize the one with industry tags
-              if (aHasIndustryTags && !bHasIndustryTags) return -1;
-              if (!aHasIndustryTags && bHasIndustryTags) return 1;
+              // Calculate relevance scores for both events
+              const aScore = calculateRelevanceScore(a, currentQuery);
+              const bScore = calculateRelevanceScore(b, currentQuery);
               
-              // If both have industry tags or both don't, sort by date (newest first)
+              // Sort by relevance score (higher first), then by date (newest first)
+              if (aScore !== bScore) {
+                return bScore - aScore;
+              }
               return new Date(b.date || 0) - new Date(a.date || 0);
           }
         });
         
         renderEvents();
+      }
+      
+      function calculateRelevanceScore(event, query) {
+        if (!query) return 0;
+        
+        let score = 0;
+        const eventIndustryTags = parseJsonbArray(event.industry_tags);
+        const eventUsageTags = parseJsonbArray(event.usage_tags);
+        
+        // Check if event matches any industry category based on query keywords
+        Object.entries(industryCategories).forEach(([category, tags]) => {
+          // Check if query contains keywords that match this category
+          const categoryKeywords = category.toLowerCase().split(' ').concat(
+            tags.map(tag => tag.replace(/-/g, ' '))
+          );
+          
+          const queryMatchesCategory = categoryKeywords.some(keyword => 
+            query.includes(keyword) || keyword.includes(query)
+          );
+          
+          if (queryMatchesCategory) {
+            // Check if event has tags from this category
+            const eventHasCategoryTags = tags.some(tag => eventIndustryTags.includes(tag));
+            if (eventHasCategoryTags) {
+              score += 100; // High priority for exact category matches
+            }
+          }
+        });
+        
+        // Check for direct tag matches
+        const allEventTags = [...eventIndustryTags, ...eventUsageTags];
+        allEventTags.forEach(tag => {
+          const tagWords = tag.replace(/-/g, ' ').toLowerCase();
+          if (query.includes(tagWords) || tagWords.includes(query)) {
+            score += 50; // Medium priority for direct tag matches
+          }
+        });
+        
+        // Check for keyword matches in event name and description
+        const eventText = `${event.name || ''} ${event.description || ''}`.toLowerCase();
+        const queryWords = query.split(' ').filter(word => word.length > 2);
+        queryWords.forEach(word => {
+          if (eventText.includes(word)) {
+            score += 10; // Low priority for text matches
+          }
+        });
+        
+        return score;
       }
       
       function renderEvents() {
@@ -2518,6 +2568,8 @@
                filteredEvents = [...allEvents];
                console.log('Updated allEvents length:', allEvents.length);
                populateFilters(allEvents);
+               // Apply relevance sorting based on search query
+               sortEvents();
                
                // Update results title to show all events
                const resultsTitle = $('results-title');
@@ -2538,6 +2590,7 @@
                console.error('Failed to fetch all events:', data.error);
                // Fallback to current events if fetch fails
                filteredEvents = [...allEvents];
+               sortEvents();
                renderEvents();
              }
            })
@@ -2545,6 +2598,7 @@
              console.error('Error fetching all events:', error);
              // Fallback to current events if fetch fails
              filteredEvents = [...allEvents];
+             sortEvents();
              renderEvents();
            });
       }

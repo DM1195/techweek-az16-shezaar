@@ -105,7 +105,7 @@ async function getOutfitRecommendationsFromSupabase(eventCategories, gender) {
     let query = supabase
       .from(OUTFIT_TABLE)
       .select('*')
-      .in('event_category', eventCategories);
+      .in('outfit_category', eventCategories);
 
     console.log('Querying outfit recommendations for categories:', eventCategories);
     
@@ -232,12 +232,13 @@ module.exports = async function handler(req, res) {
     if (outfitRecommendations.length > 0) {
       // Map database records to the expected format
       const mappedRecommendations = outfitRecommendations.map(rec => {
+        const bodyComfort = rec.body_comfort || 'mid'; // Default to 'mid' if not specified
         return {
-          event_category: rec.event_category,
-          outfit_recommendation: rec.outfit_recommendation || generateOutfitFromStyleAndComfort(rec.event_category, rec.gender, rec.body_comfort, gender),
-          reasoning: rec.reasoning || `This ${rec.gender} style with ${rec.body_comfort} comfort level is perfect for ${rec.event_category} events.`,
+          event_category: rec.outfit_category,
+          outfit_recommendation: rec.recommendation || rec.outfit_recommendation || generateOutfitFromStyleAndComfort(rec.outfit_category, rec.gender, bodyComfort, gender),
+          reasoning: rec.reasoning || `This ${rec.gender} style is perfect for ${rec.outfit_category} events.`,
           style_fit: rec.gender,
-          body_comfort: rec.body_comfort
+          body_comfort: bodyComfort
         };
       });
       
