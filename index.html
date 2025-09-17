@@ -663,11 +663,6 @@
         font-size: 14px;
       }
       
-      .ai-reasoning h4 {
-        margin: 0 0 12px 0;
-        color: #daded8;
-        font-size: 16px;
-      }
       
       .ai-reasoning .reasoning-content {
         color: rgba(218, 222, 216, 0.9);
@@ -1513,7 +1508,6 @@
         </div>
         
         <div id="ai-reasoning" class="ai-reasoning" hidden>
-          <h4>AI Reasoning</h4>
           <div id="reasoning-content"></div>
         </div>
         
@@ -2509,29 +2503,95 @@
           return;
         }
         
-        let relevanceSection = '';
-        if (aiReasoning.relevance_suggestions) {
-          const suggestions = aiReasoning.relevance_suggestions;
-          relevanceSection = `
-            <div class="relevance-suggestions">
-              <strong>🎯 Relevance Strategy:</strong><br>
-              <div class="relevance-details">
-                ${suggestions.ranking_rationale ? `<div class="ranking-rationale"><strong>Ranking Approach:</strong> ${suggestions.ranking_rationale}</div>` : ''}
-                ${suggestions.primary_criteria && Array.isArray(suggestions.primary_criteria) && suggestions.primary_criteria.length > 0 ? 
-                  `<div class="primary-criteria"><strong>Primary Focus:</strong> ${suggestions.primary_criteria.join(', ')}</div>` : ''}
-                ${suggestions.secondary_criteria && Array.isArray(suggestions.secondary_criteria) && suggestions.secondary_criteria.length > 0 ? 
-                  `<div class="secondary-criteria"><strong>Secondary Factors:</strong> ${suggestions.secondary_criteria.join(', ')}</div>` : ''}
-              </div>
-            </div>
-          `;
+        // Extract industry focus from the reasoning
+        let industryFocus = 'fashion technology'; // default
+        if (aiReasoning.relevance_suggestions && aiReasoning.relevance_suggestions.primary_criteria) {
+          const primaryCriteria = aiReasoning.relevance_suggestions.primary_criteria;
+          if (Array.isArray(primaryCriteria) && primaryCriteria.length > 0) {
+            // Look for industry-specific terms in the primary criteria
+            const industryMatch = primaryCriteria.find(criteria => 
+              criteria.toLowerCase().includes('fashion') || 
+              criteria.toLowerCase().includes('industry')
+            );
+            if (industryMatch) {
+              // Extract industry name from the criteria
+              if (industryMatch.toLowerCase().includes('fashion')) {
+                industryFocus = 'fashion technology';
+              } else if (industryMatch.toLowerCase().includes('ai')) {
+                industryFocus = 'artificial intelligence';
+              } else if (industryMatch.toLowerCase().includes('fintech')) {
+                industryFocus = 'fintech';
+              } else if (industryMatch.toLowerCase().includes('health')) {
+                industryFocus = 'health technology';
+              }
+            }
+          }
         }
+        
+        // Extract goals from the reasoning
+        let goalText = '';
+        if (aiReasoning.relevance_suggestions && aiReasoning.relevance_suggestions.primary_criteria) {
+          const primaryCriteria = aiReasoning.relevance_suggestions.primary_criteria;
+          if (Array.isArray(primaryCriteria) && primaryCriteria.length > 0) {
+            const criteriaText = primaryCriteria.join(' ').toLowerCase();
+            
+            // Check for specific goals
+            if (criteriaText.includes('cofounder') || criteriaText.includes('co-founder')) {
+              goalText = ' in which you can find potential cofounders';
+            } else if (criteriaText.includes('networking') || criteriaText.includes('meet people')) {
+              goalText = ' for networking opportunities';
+            } else if (criteriaText.includes('learn') || criteriaText.includes('learning')) {
+              goalText = ' for learning and skill development';
+            } else if (criteriaText.includes('investor') || criteriaText.includes('funding')) {
+              goalText = ' to connect with investors';
+            } else if (criteriaText.includes('partner') || criteriaText.includes('collaboration')) {
+              goalText = ' for business partnerships';
+            } else if (criteriaText.includes('feedback') || criteriaText.includes('advice')) {
+              goalText = ' to get feedback and advice';
+            }
+          }
+        }
+        
+        // Extract time preferences from the reasoning
+        let timeText = '';
+        if (aiReasoning.relevance_suggestions && aiReasoning.relevance_suggestions.secondary_criteria) {
+          const secondaryCriteria = aiReasoning.relevance_suggestions.secondary_criteria;
+          if (Array.isArray(secondaryCriteria) && secondaryCriteria.length > 0) {
+            const criteriaText = secondaryCriteria.join(' ').toLowerCase();
+            
+            // Look for date patterns
+            const dateMatch = criteriaText.match(/(before|after|on)\s+(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*)/i);
+            if (dateMatch) {
+              const dateStr = dateMatch[2];
+              const prefix = dateMatch[1];
+              timeText = ` ${prefix} ${dateStr}`;
+            } else if (criteriaText.includes('morning')) {
+              timeText = ' in the morning';
+            } else if (criteriaText.includes('afternoon')) {
+              timeText = ' in the afternoon';
+            } else if (criteriaText.includes('evening')) {
+              timeText = ' in the evening';
+            } else if (criteriaText.includes('weekend')) {
+              timeText = ' on weekends';
+            } else if (criteriaText.includes('weekday')) {
+              timeText = ' on weekdays';
+            }
+          }
+        }
+        
+        // Build the dynamic message
+        let message = `We are showing you events for ${industryFocus}`;
+        if (goalText) {
+          message += goalText;
+        }
+        if (timeText) {
+          message += timeText;
+        }
+        message += '.';
         
         reasoningContentEl.innerHTML = `
           <div class="reasoning-content">
-            <div class="overall-analysis">
-              <strong>🧠 Overall Analysis:</strong> ${aiReasoning.overall || 'No overall reasoning provided'}
-            </div>
-            ${relevanceSection}
+            ${message}
           </div>
         `;
         aiReasoningEl.hidden = false;
