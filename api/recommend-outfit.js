@@ -7,14 +7,13 @@ const OUTFIT_TABLE = process.env.OUTFIT_TABLE || 'Outfit Recommendations';
 // - id (SERIAL PRIMARY KEY)
 // - outfit_category (TEXT NOT NULL) - Event type (business-casual, activity, etc.)
 // - gender (TEXT NOT NULL) - Gender preference (female, male, gender-neutral)
-// - body_comfort (TEXT NOT NULL) - Comfort level (modest, bold, mid)
-// - outfit_recommendation (TEXT) - The actual outfit recommendation text
+// - recommendation (TEXT) - The actual outfit recommendation text
 // - reasoning (TEXT) - Why this outfit works for this category
 // - created_at (TIMESTAMP)
 // - updated_at (TIMESTAMP)
 
-// Generate outfit recommendation based on style_fit and body_comfort from database
-function generateOutfitFromStyleAndComfort(eventCategory, styleFit, bodyComfort, gender) {
+// Generate outfit recommendation based on style_fit from database
+function generateOutfitFromStyleAndComfort(eventCategory, styleFit, gender) {
   const isFemale = gender === 'female';
   const isMale = gender === 'male';
   
@@ -80,15 +79,6 @@ function generateOutfitFromStyleAndComfort(eventCategory, styleFit, bodyComfort,
     }
   }
   
-  // Adjust based on body comfort level
-  if (bodyComfort === 'modest') {
-    baseRecommendation += " Opt for more conservative cuts and longer hemlines. Avoid anything too tight or revealing.";
-  } else if (bodyComfort === 'bold') {
-    baseRecommendation += " Feel free to experiment with bolder colors, patterns, or statement pieces that express your personality.";
-  } else if (bodyComfort === 'mid') {
-    baseRecommendation += " Balance comfort with style - choose pieces that are both comfortable and stylish without being too conservative or too bold.";
-  }
-  
   return baseRecommendation;
 }
 
@@ -119,6 +109,7 @@ async function getOutfitRecommendationsFromSupabase(eventCategories, gender, raw
     console.log('🔍 Normalized event categories:', eventCategories);
     console.log('🔍 Database query categories (title case):', dbCategories);
     console.log('🔍 Querying table:', OUTFIT_TABLE);
+    console.log('🔍 Gender filter:', gender);
     
     // First, let's check what outfit categories actually exist in the database
     const { data: allOutfitData, error: allError } = await supabase
@@ -175,7 +166,22 @@ async function getOutfitRecommendationsFromSupabase(eventCategories, gender, raw
     }
 
     console.log(`✅ Found ${data?.length || 0} outfit recommendations from database`);
-    console.log('🔍 Database response data:', data);
+    console.log('🔍 Database response data:', JSON.stringify(data, null, 2));
+    
+    // Log each individual record for debugging
+    if (data && data.length > 0) {
+      data.forEach((rec, index) => {
+        console.log(`🔍 Record ${index + 1}:`, {
+          id: rec.id,
+          outfit_category: rec.outfit_category,
+          recommendation: rec.recommendation,
+          reasoning: rec.reasoning,
+          gender: rec.gender,
+          has_products: rec["Product List"] ? rec["Product List"].length : 0
+        });
+      });
+    }
+    
     return data || [];
   } catch (error) {
     console.error('Error in getOutfitRecommendationsFromSupabase:', error);
@@ -286,8 +292,6 @@ module.exports = async function handler(req, res) {
     if (outfitRecommendations.length > 0) {
       // Map database records to the expected format
       const mappedRecommendations = outfitRecommendations.map(rec => {
-        const bodyComfort = rec.body_comfort || 'mid'; // Default to 'mid' if not specified
-        
         // Convert kebab-case outfit_category to title case for display
         const displayCategory = rec.outfit_category
           .toLowerCase()
@@ -295,13 +299,28 @@ module.exports = async function handler(req, res) {
           .map(word => word.charAt(0).toUpperCase() + word.slice(1))
           .join(' ');
         
+        // Debug logging
+        console.log('🔍 Processing outfit recommendation:', {
+          id: rec.id,
+          outfit_category: rec.outfit_category,
+          recommendation: rec.recommendation,
+          reasoning: rec.reasoning,
+          gender: rec.gender
+        });
+        
+        // Use database recommendation if it exists and is not empty, otherwise generate one
+        const outfitRecommendation = (rec.recommendation && rec.recommendation.trim() !== '') 
+          ? rec.recommendation 
+          : generateOutfitFromStyleAndComfort(displayCategory, rec.gender, gender);
+        
+        console.log('🔍 Final outfit recommendation:', outfitRecommendation);
+        
         return {
           id: rec.id,
           outfit_category: displayCategory,
-          outfit_recommendation: rec.outfit_recommendation || generateOutfitFromStyleAndComfort(displayCategory, rec.gender, bodyComfort, gender),
+          outfit_recommendation: outfitRecommendation,
           reasoning: rec.reasoning || `This ${rec.gender} style is perfect for ${displayCategory} events.`,
           style_fit: rec.gender,
-          body_comfort: bodyComfort,
           products: rec["Product List"] || []
         };
       });
@@ -326,7 +345,6 @@ module.exports = async function handler(req, res) {
           outfit_recommendation: categoryRecs[0].outfit_recommendation, // First recommendation
           reasoning: categoryRecs[0].reasoning,
           style_fit: categoryRecs[0].style_fit,
-          body_comfort: categoryRecs[0].body_comfort,
           count: categoryRecs.length,
           allRecommendations: categoryRecs, // Store all recommendations for cycling
           products: categoryRecs[0].products // Include products for the first recommendation
