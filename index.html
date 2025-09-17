@@ -2510,14 +2510,17 @@
           const option = e.target.closest('.multi-select-option');
           if (option) {
             const value = option.dataset.value;
+            console.log('Option clicked:', value, 'selectedArray before:', [...selectedArray]);
             const index = selectedArray.indexOf(value);
             
             if (index > -1) {
               selectedArray.splice(index, 1);
               option.classList.remove('selected');
+              console.log('Removed from array, selectedArray after:', [...selectedArray]);
             } else {
               selectedArray.push(value);
               option.classList.add('selected');
+              console.log('Added to array, selectedArray after:', [...selectedArray]);
             }
             
             updateDisplay();
@@ -2778,11 +2781,11 @@
         console.log('Before clear - selectedLocations:', selectedLocations);
         console.log('Before clear - allEvents length:', allEvents.length);
         
-        // Clear selected filters
-        selectedDays = [];
-        selectedLocations = [];
-        selectedIndustries = [];
-        selectedTypes = [];
+        // Clear selected filters (clear arrays without creating new references)
+        selectedDays.length = 0;
+        selectedLocations.length = 0;
+        selectedIndustries.length = 0;
+        selectedTypes.length = 0;
         
         // Clear query input
         input.value = '';
