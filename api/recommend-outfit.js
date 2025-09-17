@@ -102,14 +102,22 @@ async function getOutfitRecommendationsFromSupabase(eventCategories, gender, raw
     }
 
     // Build query for outfit recommendations
-    // Convert title case back to kebab-case for database query
-    const dbCategories = eventCategories.map(category => 
-      category.toLowerCase().replace(/\s+/g, '-')
+    // Map kebab-case categories to title case for database query
+    const categoryMapping = {
+      'business-casual': 'Business Casual',
+      'daytime-social': 'Daytime Social', 
+      'evening-social': 'Evening Social',
+      'activity': 'Activity',
+      'casual': 'Casual'
+    };
+    
+    const dbCategories = rawEventCategories.map(category => 
+      categoryMapping[category] || category
     );
     
     console.log('🔍 Raw event categories from frontend:', rawEventCategories);
     console.log('🔍 Normalized event categories:', eventCategories);
-    console.log('🔍 Database query categories (kebab-case):', dbCategories);
+    console.log('🔍 Database query categories (title case):', dbCategories);
     console.log('🔍 Querying table:', OUTFIT_TABLE);
     
     // First, let's check what outfit categories actually exist in the database
