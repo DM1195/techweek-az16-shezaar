@@ -1311,7 +1311,7 @@
       .outfit-product-price {
         font-size: 14px;
         font-weight: 600;
-        color: #4c583e;
+        color: #daded8;
         margin-bottom: 8px;
       }
 
@@ -1683,15 +1683,45 @@
       const getAnotherOutfitBtn = $('get-another-outfit');
       const shopProductsBtn = $('shop-products-btn');
       
-      // Session tracking variables
-      let userSession = {
-        email: null,
-        sessionId: null,
-        startTime: Date.now(),
-        interactions: [],
-        queries: [],
-        buttonClicks: []
-      };
+       // Helper function to format product prices
+       function formatProductPrice(price) {
+         if (!price || price === '' || price === null || price === undefined) {
+           return 'TBA';
+         }
+         
+         // Convert to string and clean up
+         const priceStr = String(price).trim();
+         
+         // Check if it's already formatted with $ or if it's just a number
+         if (priceStr.startsWith('$')) {
+           return priceStr;
+         }
+         
+         // Check if it contains a number
+         const hasNumber = /\d/.test(priceStr);
+         if (!hasNumber) {
+           return 'TBA';
+         }
+         
+         // Extract numbers and format
+         const numbers = priceStr.match(/\d+(?:\.\d{2})?/);
+         if (numbers) {
+           const numValue = parseFloat(numbers[0]);
+           return `$${numValue.toFixed(2)}`;
+         }
+         
+         return 'TBA';
+       }
+
+       // Session tracking variables
+       let userSession = {
+         email: null,
+         sessionId: null,
+         startTime: Date.now(),
+         interactions: [],
+         queries: [],
+         buttonClicks: []
+       };
 
       // Generate session ID
       userSession.sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -2112,7 +2142,7 @@
                     ${product.product_image ? `<img src="${product.product_image}" alt="${product.product_name}" class="outfit-product-image" onerror="this.style.display='none'">` : ''}
                     <div class="outfit-product-name">${product.product_name || 'Product Name'}</div>
                     ${product.brand_name ? `<div class="outfit-product-brand">${product.brand_name}</div>` : ''}
-                    <div class="outfit-product-price">${product.product_price || 'Price TBA'}</div>
+                    <div class="outfit-product-price">${formatProductPrice(product.product_price)}</div>
                     ${product.product_link ? `<a href="${product.product_link}" target="_blank" class="outfit-product-link">View Product</a>` : ''}
                   </div>
                 `).join('')}
@@ -2226,7 +2256,7 @@
                       ${product.product_image ? `<img src="${product.product_image}" alt="${product.product_name}" class="outfit-product-image" onerror="this.style.display='none'">` : ''}
                       <div class="outfit-product-name">${product.product_name || 'Product Name'}</div>
                       ${product.brand_name ? `<div class="outfit-product-brand">${product.brand_name}</div>` : ''}
-                      <div class="outfit-product-price">${product.product_price || 'Price TBA'}</div>
+                      <div class="outfit-product-price">${formatProductPrice(product.product_price)}</div>
                       ${product.product_link ? `<a href="${product.product_link}" target="_blank" class="outfit-product-link">View Product</a>` : ''}
                     </div>
                   `).join('')}
@@ -2294,7 +2324,7 @@
                       ${product.product_image ? `<img src="${product.product_image}" alt="${product.product_name}" class="outfit-product-image" onerror="this.style.display='none'">` : ''}
                       <div class="outfit-product-name">${product.product_name || 'Product Name'}</div>
                       ${product.brand_name ? `<div class="outfit-product-brand">${product.brand_name}</div>` : ''}
-                      <div class="outfit-product-price">${product.product_price || 'Price TBA'}</div>
+                      <div class="outfit-product-price">${formatProductPrice(product.product_price)}</div>
                       ${product.product_link ? `<a href="${product.product_link}" target="_blank" class="outfit-product-link">View Product</a>` : ''}
                     </div>
                   `).join('')}
