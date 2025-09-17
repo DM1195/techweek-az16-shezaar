@@ -2811,8 +2811,9 @@
                filteredEvents = [...allEvents];
                console.log('Updated allEvents length:', allEvents.length);
                populateFilters(allEvents);
-               // Apply relevance sorting based on search query
-               sortEvents();
+               
+               // Re-render events
+               renderEvents();
                
                // Update results title to show all events
                const resultsTitle = $('results-title');
