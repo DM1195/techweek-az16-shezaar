@@ -3012,27 +3012,14 @@
       // Filter and sort event listeners
       sortSelect.addEventListener('change', sortEvents);
       
-      // Add Clear All button event listener with error handling
+      // Add Clear All button event listener
       const clearFiltersBtn = $('clear-filters');
-      console.log('clearFiltersBtn found:', clearFiltersBtn);
-      console.log('Button element:', clearFiltersBtn);
-      console.log('Button disabled?', clearFiltersBtn?.disabled);
-      console.log('Button style:', clearFiltersBtn?.style);
-      
       if (clearFiltersBtn) {
-        console.log('Adding event listener to Clear All button');
         clearFiltersBtn.addEventListener('click', (e) => {
-          console.log('Clear All button clicked!', e);
           e.preventDefault();
           e.stopPropagation();
-          alert('Clear All button clicked!'); // Temporary test
           trackButtonClick('clear-filters', 'Clear All');
           clearFilters();
-        });
-        
-        // Also add mousedown for debugging
-        clearFiltersBtn.addEventListener('mousedown', (e) => {
-          console.log('Clear All button mousedown!', e);
         });
       } else {
         console.error('Clear All button not found!');

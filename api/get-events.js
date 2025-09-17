@@ -44,7 +44,7 @@ async function upsertEvents(supabase, events) {
 }
 
 async function fetchEvents(supabase, { q, limit = 100 }) {
-  let query = supabase.from(TABLE).select('*').order('created_at', { ascending: false });
+  let query = supabase.from(TABLE).select('*').order('updated_at', { ascending: false });
   if (q) {
     const cleaned = sanitizeLikeValue(q);
     if (cleaned) {
