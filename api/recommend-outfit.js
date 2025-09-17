@@ -8,6 +8,8 @@ const OUTFIT_TABLE = process.env.OUTFIT_TABLE || 'Outfit Recommendations';
 // - event_category (TEXT NOT NULL) - Event type (Business Casual, Activity, etc.)
 // - gender (TEXT NOT NULL) - Gender preference (female, male, gender-neutral)
 // - body_comfort (TEXT NOT NULL) - Comfort level (modest, bold, mid)
+// - outfit_recommendation (TEXT) - The actual outfit recommendation text
+// - reasoning (TEXT) - Why this outfit works for this category
 // - created_at (TIMESTAMP)
 // - updated_at (TIMESTAMP)
 
@@ -16,10 +18,18 @@ function generateOutfitFromStyleAndComfort(eventCategory, styleFit, bodyComfort,
   const isFemale = gender === 'female';
   const isMale = gender === 'male';
   
+  // Normalize event category to handle different formats
+  const normalizedCategory = eventCategory
+    .toLowerCase()
+    .replace(/-/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+  
   // Base recommendations by event category
   let baseRecommendation = '';
   
-  if (eventCategory === 'Business Casual') {
+  if (normalizedCategory === 'Business Casual') {
     if (isFemale) {
       baseRecommendation = "A tailored blazer with dress pants or a professional dress, paired with closed-toe heels or professional flats. Consider a crisp white or light blue blouse, minimal jewelry, and a professional handbag.";
     } else if (isMale) {
@@ -27,7 +37,7 @@ function generateOutfitFromStyleAndComfort(eventCategory, styleFit, bodyComfort,
     } else {
       baseRecommendation = "Professional business attire - a well-fitted suit or equivalent professional ensemble. Choose neutral colors like navy, charcoal, or black.";
     }
-  } else if (eventCategory === 'Activity') {
+  } else if (normalizedCategory === 'Activity') {
     if (isFemale) {
       baseRecommendation = "Comfortable athleisure or activewear that's still presentable - think structured joggers, a nice athletic top, and clean sneakers.";
     } else if (isMale) {
@@ -35,7 +45,7 @@ function generateOutfitFromStyleAndComfort(eventCategory, styleFit, bodyComfort,
     } else {
       baseRecommendation = "Comfortable athleisure or activewear that's still presentable. Choose breathable, comfortable pieces that allow for movement.";
     }
-  } else if (eventCategory === 'Daytime Social') {
+  } else if (normalizedCategory === 'Daytime Social') {
     if (isFemale) {
       baseRecommendation = "Light, airy pieces like a sundress with a cardigan, or nice pants with a flowy top. Comfortable flats or low heels.";
     } else if (isMale) {
@@ -43,13 +53,21 @@ function generateOutfitFromStyleAndComfort(eventCategory, styleFit, bodyComfort,
     } else {
       baseRecommendation = "Light, comfortable pieces that are appropriate for daytime gatherings. Choose breathable fabrics and comfortable footwear.";
     }
-  } else if (eventCategory === 'Evening Social') {
+  } else if (normalizedCategory === 'Evening Social') {
     if (isFemale) {
       baseRecommendation = "Dressier attire like a cocktail dress or nice pants with a dressy top, heels or dressy flats, and elegant accessories.";
     } else if (isMale) {
       baseRecommendation = "Dressier attire like dark jeans or dress pants with a dress shirt or nice polo, dress shoes or clean sneakers, and a blazer.";
     } else {
       baseRecommendation = "Dressier attire appropriate for evening gatherings. Choose pieces that are more formal than daytime wear.";
+    }
+  } else if (normalizedCategory === 'Casual') {
+    if (isFemale) {
+      baseRecommendation = "Relaxed yet put-together pieces like well-fitted jeans, a nice t-shirt or blouse, comfortable sneakers or flats, and a casual jacket or cardigan.";
+    } else if (isMale) {
+      baseRecommendation = "Relaxed yet put-together pieces like dark jeans, a polo shirt or casual button-down, clean sneakers or casual shoes, and a light jacket.";
+    } else {
+      baseRecommendation = "Relaxed yet put-together pieces that are comfortable and stylish. Choose well-fitted, casual pieces that look intentional.";
     }
   } else {
     // Default for other categories
@@ -87,7 +105,7 @@ async function getOutfitRecommendationsFromSupabase(eventCategories, gender) {
     let query = supabase
       .from(OUTFIT_TABLE)
       .select('*')
-      .in('outfit_category', eventCategories);
+      .in('event_category', eventCategories);
 
     console.log('Querying outfit recommendations for categories:', eventCategories);
     
@@ -214,14 +232,10 @@ module.exports = async function handler(req, res) {
     if (outfitRecommendations.length > 0) {
       // Map database records to the expected format
       const mappedRecommendations = outfitRecommendations.map(rec => {
-        // Generate outfit recommendation based on the available data
-        // Fix parameter order: (eventCategory, styleFit, bodyComfort, gender)
-        const outfitRecommendation = generateOutfitFromStyleAndComfort(rec.event_category, rec.gender, rec.body_comfort, gender);
-        
         return {
           event_category: rec.event_category,
-          outfit_recommendation: outfitRecommendation, // Always use generated recommendation since DB doesn't store it
-          reasoning: `This ${rec.gender} style with ${rec.body_comfort} comfort level is perfect for ${rec.event_category} events.`,
+          outfit_recommendation: rec.outfit_recommendation || generateOutfitFromStyleAndComfort(rec.event_category, rec.gender, rec.body_comfort, gender),
+          reasoning: rec.reasoning || `This ${rec.gender} style with ${rec.body_comfort} comfort level is perfect for ${rec.event_category} events.`,
           style_fit: rec.gender,
           body_comfort: rec.body_comfort
         };
@@ -258,36 +272,16 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // No outfit recommendations found in database - generate fallback recommendations for each category
-    const fallbackTabs = eventCategories.map(category => {
-      const fallbackRecommendation = generateOutfitFromStyleAndComfort(category, 'mid', 'mid', gender);
-      return {
-        event_category: category,
-        outfit_recommendation: fallbackRecommendation,
-        reasoning: `This outfit recommendation is tailored for ${category} events based on your preferences.`,
-        style_fit: 'mid',
-        body_comfort: 'mid',
-        count: 1
-      };
-    });
-    
-    const combinedFallbackRecommendation = fallbackTabs.map(rec => 
-      `**${rec.event_category}**: ${rec.outfit_recommendation}`
-    ).join('\n\n');
-    
-    const combinedFallbackReasoning = fallbackTabs.map(rec => 
-      `**${rec.event_category}**: ${rec.reasoning}`
-    ).join('\n\n');
-    
+    // No outfit recommendations found in database - return empty response
     return res.status(200).json({ 
       ok: true, 
-      recommendation: combinedFallbackRecommendation,
-      reasoning: combinedFallbackReasoning,
+      recommendation: "No outfit recommendations found in our database for your event categories.",
+      reasoning: "We couldn't find outfit recommendations in our database for your selected event categories and preferences.",
       eventCategories: eventCategories,
       outfitRecommendations: [],
-      tabs: fallbackTabs, // New tabbed structure
+      tabs: [], // Empty tabs array
       count: 0,
-      message: `Generated outfit recommendations for your ${eventCategories.length} event categories.`
+      message: "No outfit recommendations found in our database for your event categories."
     });
 
   } catch (error) {
