@@ -1998,11 +1998,19 @@
         if (tabs.length === 0) return;
         
         // Create tab navigation
-        const tabNavigation = tabs.map((tab, index) => `
-          <button class="outfit-tab ${index === 0 ? 'active' : ''}" data-tab-index="${index}">
-            ${tab.event_category}
-          </button>
-        `).join('');
+        const tabNavigation = tabs.map((tab, index) => {
+          // Format tab name: capitalize first letter and replace hyphens with spaces
+          const formattedName = tab.event_category
+            .split('-')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+          
+          return `
+            <button class="outfit-tab ${index === 0 ? 'active' : ''}" data-tab-index="${index}">
+              ${formattedName}
+            </button>
+          `;
+        }).join('');
         
         // Create tab content
         const tabContent = tabs.map((tab, index) => `
@@ -2015,13 +2023,6 @@
         `).join('');
         
         outfitContent.innerHTML = `
-          <div class="event-types">
-            <h5>Event Categories for Your Recommended Events:</h5>
-            <div class="tags">
-              ${eventCategories.map(category => `<span class="tag">${category}</span>`).join('')}
-            </div>
-          </div>
-          
           <div class="outfit-tabs-container">
             <div class="outfit-tabs-navigation">
               ${tabNavigation}
@@ -2047,13 +2048,6 @@
         const currentRec = allOutfitRecommendations[currentOutfitIndex];
         
         outfitContent.innerHTML = `
-          <div class="event-types">
-            <h5>Event Categories for Your Recommended Events:</h5>
-            <div class="tags">
-              ${eventCategories.map(category => `<span class="tag">${category}</span>`).join('')}
-            </div>
-          </div>
-          
           <div class="outfit-recommendation">
             <p><strong>Outfit:</strong> ${currentRec.outfit_recommendation}</p>
             <p><strong>Why this outfit:</strong> ${currentRec.reasoning}</p>

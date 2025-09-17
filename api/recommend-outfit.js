@@ -236,12 +236,23 @@ module.exports = async function handler(req, res) {
         `**${rec.event_category}**: ${rec.reasoning}`
       ).join('\n\n');
       
+      // Create tabs structure for the frontend
+      const tabs = mappedRecommendations.map(rec => ({
+        event_category: rec.event_category,
+        outfit_recommendation: rec.outfit_recommendation,
+        reasoning: rec.reasoning,
+        style_fit: rec.style_fit,
+        body_comfort: rec.body_comfort,
+        count: 1
+      }));
+
       return res.status(200).json({ 
         ok: true, 
         recommendation: combinedRecommendation,
         reasoning: combinedReasoning,
         eventCategories: eventCategories,
         outfitRecommendations: mappedRecommendations,
+        tabs: tabs, // New tabbed structure
         count: mappedRecommendations.length,
         message: `Found ${mappedRecommendations.length} outfit recommendations for your event categories.`
       });
