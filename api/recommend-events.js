@@ -852,7 +852,7 @@ module.exports = async (req, res) => {
       industry_tags: e.industry_tags,
       women_specific: e.women_specific,
       invite_only: e.invite_only,
-      event_category: e.outfit_category || generateEventCategory(e.event_name, e.event_description, e.event_tags),
+      outfit_category: e.outfit_category || generateEventCategory(e.event_name, e.event_description, e.event_tags),
       aiExplanation: e.aiExplanation || 'Selected based on relevance to your query'
     }));
     console.log(`✅ Shaped ${results.length} results`);

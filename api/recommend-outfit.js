@@ -5,7 +5,7 @@ const OUTFIT_TABLE = process.env.OUTFIT_TABLE || 'Outfit Recommendations';
 
 // Database schema for Outfit Recommendations table:
 // - id (SERIAL PRIMARY KEY)
-// - event_category (TEXT NOT NULL) - Event type (Business Casual, Activity, etc.)
+// - outfit_category (TEXT NOT NULL) - Event type (business-casual, activity, etc.)
 // - gender (TEXT NOT NULL) - Gender preference (female, male, gender-neutral)
 // - body_comfort (TEXT NOT NULL) - Comfort level (modest, bold, mid)
 // - outfit_recommendation (TEXT) - The actual outfit recommendation text
