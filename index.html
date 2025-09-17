@@ -1846,15 +1846,6 @@
           filteredEvents = [...allEvents];
           aiReasoning = data.aiReasoning || null;
           
-          // Debug: Check if events have usage_tags
-          console.log('📊 Loaded events sample with usage_tags:');
-          allEvents.slice(0, 3).forEach((event, index) => {
-            console.log(`${index + 1}. ${event.name}`, {
-              usage_tags: event.usage_tags,
-              industry_tags: event.industry_tags
-            });
-          });
-          
           if (allEvents.length > 0) {
             // Populate filter options
             populateFilters(allEvents);
@@ -2202,7 +2193,10 @@
         const typeTags = [
           'find-cofounder', 'find-investors', 'find-angels', 'find-talent', 'find-customers',
           'find-advisors', 'find-partners', 'get-feedback', 'learn-skills', 'industry-insights', 'networking',
-          'pitch-opportunities', 'fundraising', 'product-launch', 'women-specific'
+          'pitch-opportunities', 'fundraising', 'product-launch', 'women-specific',
+          // Additional usage tags found in the data
+          'meeting-people', 'meeting-founders', 'meeting-investors', 'learning', 'business-activities',
+          'professional-development', 'industry-engagement', 'pitching', 'business-collaboration'
         ];
         
         typeDropdown.innerHTML = typeTags.map(type => {
@@ -2311,14 +2305,6 @@
       
       
       function applyFilters() {
-        console.log('🔍 Applying filters:', {
-          selectedDays: selectedDays.length,
-          selectedLocations: selectedLocations.length,
-          selectedIndustries: selectedIndustries.length,
-          selectedTypes: selectedTypes.length,
-          selectedTypesList: selectedTypes
-        });
-        
         filteredEvents = allEvents.filter(event => {
           const dayMatch = selectedDays.length === 0 || 
                           selectedDays.some(day => event.date?.includes(day) || getDayFromDate(event.date) === day);
@@ -2328,15 +2314,6 @@
                                 (event.industry_tags && selectedIndustries.some(industry => event.industry_tags.includes(industry)));
           const typeMatch = selectedTypes.length === 0 || 
                             (event.usage_tags && selectedTypes.some(type => event.usage_tags.includes(type)));
-          
-          // Debug type filtering
-          if (selectedTypes.length > 0) {
-            console.log(`🔍 Event: ${event.name}`, {
-              usage_tags: event.usage_tags,
-              selectedTypes: selectedTypes,
-              typeMatch: typeMatch
-            });
-          }
           
           return dayMatch && locationMatch && industryMatch && typeMatch;
         });
@@ -2488,15 +2465,6 @@
                  invite_only: event.invite_only,
                  event_category: event.event_category
                }));
-               
-               // Debug: Check if events have usage_tags when loading all events
-               console.log('📊 All events sample with usage_tags:');
-               allEvents.slice(0, 3).forEach((event, index) => {
-                 console.log(`${index + 1}. ${event.name}`, {
-                   usage_tags: event.usage_tags,
-                   industry_tags: event.industry_tags
-                 });
-               });
                
                filteredEvents = [...allEvents];
                console.log('Updated allEvents length:', allEvents.length);
