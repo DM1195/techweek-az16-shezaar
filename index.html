@@ -1168,74 +1168,6 @@
         box-shadow: 0 6px 20px rgba(218, 222, 216, 0.3);
       }
       
-      /* Products Display Styles */
-      .products-content {
-        background: rgba(44, 52, 36, 0.6);
-        border: 1px solid rgba(218, 222, 216, 0.2);
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 20px;
-      }
-      
-      .products-content h4 {
-        margin: 0 0 16px 0;
-        color: #daded8;
-        font-size: 18px;
-      }
-      
-      .products-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 16px;
-        margin-top: 16px;
-      }
-      
-      .product-item {
-        background: rgba(76, 88, 62, 0.3);
-        border: 1px solid rgba(218, 222, 216, 0.2);
-        border-radius: 8px;
-        padding: 16px;
-        text-align: center;
-        transition: all 0.3s ease;
-      }
-      
-      .product-item:hover {
-        background: rgba(76, 88, 62, 0.5);
-        transform: translateY(-2px);
-      }
-      
-      .product-name {
-        font-weight: 600;
-        color: #daded8;
-        margin-bottom: 8px;
-        font-size: 14px;
-      }
-      
-      .product-price {
-        color: rgba(218, 222, 216, 0.8);
-        font-size: 13px;
-        margin-bottom: 8px;
-      }
-      
-      .product-link {
-        color: #daded8;
-        text-decoration: none;
-        font-size: 12px;
-        font-weight: 500;
-        border-bottom: 1px solid transparent;
-        transition: all 0.3s ease;
-      }
-      
-      .product-link:hover {
-        border-bottom-color: #daded8;
-      }
-      
-      .no-products {
-        text-align: center;
-        color: rgba(218, 222, 216, 0.8);
-        font-style: italic;
-        padding: 20px;
-      }
 
       /* Outfit Tabs Styles */
       .outfit-tabs-container {
@@ -1401,6 +1333,23 @@
         background: rgba(76, 88, 62, 1);
         color: #ffffff;
         transform: translateY(-1px);
+      }
+
+      .no-products-message {
+        text-align: center;
+        padding: 20px;
+        background: rgba(44, 52, 36, 0.3);
+        border: 1px solid rgba(218, 222, 216, 0.1);
+        border-radius: 8px;
+        margin-top: 12px;
+      }
+
+      .no-products-message p {
+        margin: 0;
+        color: rgba(218, 222, 216, 0.8);
+        font-style: italic;
+        font-size: 14px;
+        line-height: 1.5;
       }
 
       @keyframes fadeIn {
@@ -1686,11 +1635,6 @@
             <!-- Outfit recommendation content will be inserted here -->
           </div>
           
-          <!-- Products Display -->
-          <div id="products-content" class="products-content" style="display: none;">
-            <h4>Shop For Products</h4>
-            <div id="products-list"></div>
-          </div>
           
           <div class="modal-actions">
             <button class="btn primary" id="shop-products-btn" style="display: none;">Shop For Products</button>
@@ -1735,8 +1679,6 @@
       const outfitModal = $('outfit-modal');
       const genderSelection = $('gender-selection');
       const outfitContent = $('outfit-content');
-      const productsContent = $('products-content');
-      const productsList = $('products-list');
       const modalClose = $('modal-close');
       const getAnotherOutfitBtn = $('get-another-outfit');
       const shopProductsBtn = $('shop-products-btn');
@@ -2039,7 +1981,6 @@
         // Reset modal state
         genderSelection.style.display = 'block';
         outfitContent.style.display = 'none';
-        productsContent.style.display = 'none';
         getAnotherOutfitBtn.style.display = 'none';
         shopProductsBtn.style.display = 'none';
         
@@ -2176,7 +2117,14 @@
                 `).join('')}
               </div>
             </div>
-          ` : '';
+          ` : `
+            <div class="outfit-products">
+              <h5>Shop This Look</h5>
+              <div class="no-products-message">
+                <p>Oh damn! We don't have any products that match this suggestion. But check again soon cause we are adding new ones!</p>
+              </div>
+            </div>
+          `;
           
           return `
             <div class="outfit-tab-content ${index === 0 ? 'active' : ''}" data-tab-index="${index}">
@@ -2229,7 +2177,14 @@
               `).join('')}
             </div>
           </div>
-        ` : '';
+        ` : `
+          <div class="outfit-products">
+            <h5>Shop This Look</h5>
+            <div class="no-products-message">
+              <p>Oh damn! We don't have any products that match this suggestion. But check again soon cause we are adding new ones!</p>
+            </div>
+          </div>
+        `;
         
         outfitContent.innerHTML = `
           <div class="outfit-recommendation">
@@ -2312,7 +2267,14 @@
                   `).join('')}
                 </div>
               </div>
-            ` : '';
+            ` : `
+              <div class="outfit-products">
+                <h5>Shop This Look</h5>
+                <div class="no-products-message">
+                  <p>Oh damn! We don't have any products that match this suggestion. But check again soon cause we are adding new ones!</p>
+                </div>
+              </div>
+            `;
             
             tabContent.innerHTML = `
               <div class="outfit-recommendation">
@@ -2331,54 +2293,39 @@
         }
       }
       
-      async function showProducts() {
-        try {
-          status.innerHTML = '<div class="loading"></div> Loading products...';
-          
-          const resp = await fetch('/api/get-products', {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
-          });
-          
-          const data = await resp.json();
-          
-          if (data.ok && data.products && data.products.length > 0) {
-            productsList.innerHTML = `
-              <div class="products-grid">
-                ${data.products.map(product => `
-                  <div class="product-item">
-                    <div class="product-name">${product.product_name || 'Product Name'}</div>
-                    <div class="product-price">${product.price || 'Price TBA'}</div>
-                    ${product.product_url ? `<a href="${product.product_url}" target="_blank" class="product-link">View Product</a>` : ''}
-                  </div>
-                `).join('')}
-              </div>
-            `;
-          } else {
-            productsList.innerHTML = `
-              <div class="no-products">
-                No products available at the moment. Check back soon!
-              </div>
-            `;
+      function showShopThisLook() {
+        // This function is called when "Shop For Products" button is clicked
+        // The products are already displayed within each outfit tab in the "Shop This Look" section
+        // We just need to ensure the outfit content is visible and scroll to the products
+        
+        // Make sure outfit content is visible
+        outfitContent.style.display = 'block';
+        
+        // If we're using tabs, scroll to the first tab's products section
+        const hasTabs = outfitContent.querySelector('.outfit-tabs-container');
+        if (hasTabs) {
+          // Find the active tab's products section
+          const activeTab = outfitContent.querySelector('.outfit-tab.active');
+          if (activeTab) {
+            const tabIndex = parseInt(activeTab.dataset.tabIndex);
+            const activeTabContent = outfitContent.querySelector(`.outfit-tab-content[data-tab-index="${tabIndex}"]`);
+            const productsSection = activeTabContent.querySelector('.outfit-products');
+            
+            if (productsSection) {
+              // Scroll to the products section
+              productsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
           }
-          
-          // Show products content below the outfit recommendation
-          productsContent.style.display = 'block';
-          shopProductsBtn.style.display = 'none';
-          
-        } catch (e) {
-          console.error('Error loading products:', e);
-          productsList.innerHTML = `
-            <div class="no-products">
-              Error loading products. Please try again later.
-            </div>
-          `;
-          // Still show the products content even if there's an error
-          productsContent.style.display = 'block';
-          shopProductsBtn.style.display = 'none';
-        } finally {
-          status.textContent = '';
+        } else {
+          // For non-tabbed interface, scroll to the products section
+          const productsSection = outfitContent.querySelector('.outfit-products');
+          if (productsSection) {
+            productsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
         }
+        
+        // Hide the button since products are now visible
+        shopProductsBtn.style.display = 'none';
       }
       
       function hideOutfitModal() {
@@ -2388,12 +2335,9 @@
         // Reset modal state
         genderSelection.style.display = 'block';
         outfitContent.style.display = 'none';
-        productsContent.style.display = 'none';
         getAnotherOutfitBtn.style.display = 'none';
         shopProductsBtn.style.display = 'none';
         
-        // Clear products list
-        productsList.innerHTML = '';
         
         // Reset global variables
         currentOutfitIndex = 0;
@@ -2941,7 +2885,7 @@
       });
       shopProductsBtn.addEventListener('click', () => {
         trackButtonClick('shop-products-btn', 'Shop For Products');
-        showProducts();
+        showShopThisLook();
       });
       
       // Close modal when clicking outside
