@@ -2253,6 +2253,12 @@
         
         // Update current index for navigation
         currentOutfitIndex = tabIndex;
+        
+        // Hide all products sections and show the Shop For Products button when switching tabs
+        outfitContent.querySelectorAll('.outfit-products').forEach(productsSection => {
+          productsSection.style.display = 'none';
+        });
+        shopProductsBtn.style.display = 'inline-block';
       }
 
       function showNextOutfitRecommendation() {
@@ -2311,12 +2317,25 @@
               ${productsHtml}
             `;
           }
+          
+          // Hide all products sections and show the Shop For Products button
+          outfitContent.querySelectorAll('.outfit-products').forEach(productsSection => {
+            productsSection.style.display = 'none';
+          });
+          shopProductsBtn.style.display = 'inline-block';
         } else {
           // Legacy non-tabbed interface
           if (allOutfitRecommendations.length <= 1) return;
           currentOutfitIndex = (currentOutfitIndex + 1) % allOutfitRecommendations.length;
           const outfitCategories = window.currentOutfitCategories || [];
           showCurrentOutfitRecommendation(outfitCategories);
+          
+          // Hide products section and show the Shop For Products button
+          const productsSection = outfitContent.querySelector('.outfit-products');
+          if (productsSection) {
+            productsSection.style.display = 'none';
+          }
+          shopProductsBtn.style.display = 'inline-block';
         }
       }
       
@@ -2361,7 +2380,7 @@
           }
         }
         
-        // Hide the button since products are now visible
+        // Hide the button since products are now visible (whether they exist or not)
         shopProductsBtn.style.display = 'none';
       }
       
