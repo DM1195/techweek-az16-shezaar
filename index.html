@@ -1950,7 +1950,7 @@
         try {
           const resp = await fetch('/api/recommend-events', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, limit: 1000 })
+            body: JSON.stringify({ message, limit: 5000 })
           });
           const data = await resp.json();
           if (!data.ok) throw new Error(data.error || 'Failed');
@@ -2819,7 +2819,7 @@
         
          // Fetch ALL events from database (reset query logic)
          console.log('Fetching all events from database...');
-         fetch('/api/get-events?limit=2000')
+         fetch('/api/get-events?limit=5000')
            .then(response => {
              console.log('Fetch response:', response.status);
              return response.json();

@@ -50,7 +50,7 @@ class DataQualityAnalyzer {
     const { data, error } = await this.supabase
       .from('Event List')
       .select('event_name, usage_tags, industry_tags, event_tags, event_description, event_name_and_link')
-      .limit(1000);
+      .limit(5000);
     
     if (error) {
       console.error('❌ Error fetching events:', error);
