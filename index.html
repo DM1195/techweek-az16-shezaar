@@ -1950,11 +1950,13 @@
         try {
           const resp = await fetch('/api/recommend-events', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, limit: 5000 })
+            body: JSON.stringify({ message, limit: 5000, t: Date.now() })
           });
           const data = await resp.json();
           if (!data.ok) throw new Error(data.error || 'Failed');
           
+          console.log('Search API response:', data);
+          console.log('Search results count:', data.results?.length || 0);
           allEvents = data.results || [];
           filteredEvents = [...allEvents];
           aiReasoning = data.aiReasoning || null;
@@ -2819,13 +2821,14 @@
         
          // Fetch ALL events from database (reset query logic)
          console.log('Fetching all events from database...');
-         fetch('/api/get-events?limit=5000')
+         fetch('/api/get-events?limit=5000&t=' + Date.now())
            .then(response => {
              console.log('Fetch response:', response.status);
              return response.json();
            })
            .then(data => {
              console.log('Fetch data:', data);
+             console.log('Events count from API:', data.events?.length || 0);
              if (data.ok && data.events) {
                // Transform events to match the expected format
                allEvents = data.events.map(event => ({

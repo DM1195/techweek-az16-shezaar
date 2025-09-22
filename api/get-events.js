@@ -44,21 +44,57 @@ async function upsertEvents(supabase, events) {
 }
 
 async function fetchEvents(supabase, { q, limit = 100, maxLimit = 5000 }) {
-  let query = supabase.from(TABLE).select('*').order('updated_at', { ascending: false });
-  if (q) {
-    const cleaned = sanitizeLikeValue(q);
-    if (cleaned) {
-      query = query.or(
-        `event_name.ilike.%${cleaned}%,event_description.ilike.%${cleaned}%,event_location.ilike.%${cleaned}%,hosted_by.ilike.%${cleaned}%`
-      );
-    }
-  }
   // Cap the limit at maxLimit to prevent excessive queries
   const actualLimit = Math.min(Number(limit) || 100, maxLimit);
-  if (actualLimit) query = query.limit(actualLimit);
-  const { data, error } = await query;
-  if (error) throw error;
-  return data || [];
+  
+  // For large limits, use batch fetching to handle Supabase's 1000 row limit
+  if (actualLimit > 1000) {
+    console.log(`Fetching ${actualLimit} events using batch method...`);
+    const events = [];
+    const batchSize = 1000;
+    let offset = 0;
+    
+    while (events.length < actualLimit) {
+      const remaining = actualLimit - events.length;
+      const currentBatchSize = Math.min(batchSize, remaining);
+      
+      let query = supabase.from(TABLE).select('*').order('updated_at', { ascending: false });
+      if (q) {
+        const cleaned = sanitizeLikeValue(q);
+        if (cleaned) {
+          query = query.or(
+            `event_name.ilike.%${cleaned}%,event_description.ilike.%${cleaned}%,event_location.ilike.%${cleaned}%,hosted_by.ilike.%${cleaned}%`
+          );
+        }
+      }
+      
+      const { data, error } = await query.range(offset, offset + currentBatchSize - 1);
+      if (error) throw error;
+      
+      if (!data || data.length === 0) break;
+      events.push(...data);
+      offset += currentBatchSize;
+      
+      console.log(`Fetched batch: ${data.length} events (total: ${events.length})`);
+    }
+    
+    return events;
+  } else {
+    // For smaller limits, use regular query
+    let query = supabase.from(TABLE).select('*').order('updated_at', { ascending: false });
+    if (q) {
+      const cleaned = sanitizeLikeValue(q);
+      if (cleaned) {
+        query = query.or(
+          `event_name.ilike.%${cleaned}%,event_description.ilike.%${cleaned}%,event_location.ilike.%${cleaned}%,hosted_by.ilike.%${cleaned}%`
+        );
+      }
+    }
+    if (actualLimit) query = query.limit(actualLimit);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  }
 }
 
 // Vercel-style default export handler
