@@ -29,12 +29,35 @@ def analyze_database():
     try:
         supabase = get_supabase_client()
         
-        # Get all events
-        print("📊 Fetching all events...")
-        response = supabase.table('Event List').select('*').execute()
-        events = response.data
+        # Get actual count first
+        print("📊 Getting actual event count...")
+        count_response = supabase.table('Event List').select('id', count='exact').execute()
+        actual_count = count_response.count
+        print(f"📊 Actual events in database: {actual_count}")
+        
+        # Get all events in batches to handle large datasets (up to 5000)
+        print("📊 Fetching all events in batches...")
+        events = []
+        batch_size = 1000
+        max_events = 5000
+        offset = 0
+        
+        while len(events) < min(actual_count, max_events):
+            remaining = min(actual_count, max_events) - len(events)
+            current_batch_size = min(batch_size, remaining)
+            
+            response = supabase.table('Event List').select('*').range(offset, offset + current_batch_size - 1).execute()
+            batch_events = response.data
+            events.extend(batch_events)
+            
+            print(f"   Fetched batch {offset//batch_size + 1}: {len(batch_events)} events (total: {len(events)})")
+            
+            if len(batch_events) < current_batch_size:
+                break
+            offset += current_batch_size
+        
         total_count = len(events)
-        print(f"📊 Total events in database: {total_count}")
+        print(f"📊 Total events fetched: {total_count}")
         
         # Check for events without event_name_and_link
         events_without_key = [e for e in events if not e.get('event_name_and_link')]

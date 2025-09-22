@@ -38,6 +38,11 @@ def check_database():
             print("❌ No events found in database")
             return
         
+        # Check if we're within 5000 limit
+        if total_count > 5000:
+            print(f"⚠️  Warning: {total_count} events exceed 5000 limit")
+            print(f"   Will show analysis for first 5000 events only.")
+        
         # Get sample events
         print(f"\n📅 Sample events (first 5):")
         response = supabase.table('Event List').select('*').limit(5).execute()

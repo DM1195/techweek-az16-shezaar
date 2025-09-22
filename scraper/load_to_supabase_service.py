@@ -192,9 +192,15 @@ def load_events_from_csv(csv_path: str) -> List[Dict[str, Any]]:
     print(f"✅ Loaded {len(events)} events from CSV")
     return events
 
-def upload_events_to_supabase(supabase: Client, events: List[Dict[str, Any]], batch_size: int = 20) -> int:
-    """Upload events to Supabase in batches."""
+def upload_events_to_supabase(supabase: Client, events: List[Dict[str, Any]], batch_size: int = 20, max_events: int = 5000) -> int:
+    """Upload events to Supabase in batches (up to 5000 events)."""
     total_uploaded = 0
+    
+    # Limit events to max_events if needed
+    if len(events) > max_events:
+        print(f"⚠️  Warning: {len(events)} events exceed max limit of {max_events}")
+        print(f"   Will upload first {max_events} events only.")
+        events = events[:max_events]
     
     print(f"🚀 Uploading {len(events)} events to Supabase in batches of {batch_size}...")
     
@@ -295,8 +301,8 @@ def main():
             print("❌ No events loaded from CSV")
             return
         
-        # Upload events to Supabase
-        uploaded_count = upload_events_to_supabase(supabase, events)
+        # Upload events to Supabase (up to 5000 events)
+        uploaded_count = upload_events_to_supabase(supabase, events, max_events=5000)
         
         print(f"\n🎉 Upload complete!")
         print(f"📊 Total events uploaded: {uploaded_count}")

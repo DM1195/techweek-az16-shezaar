@@ -338,15 +338,19 @@ function calculateRelevanceScore(event, context) {
   return score;
 }
 
-async function filterEvents(supabase, context, limit = 1000) {
+async function filterEvents(supabase, context, limit = 1000, maxLimit = 5000) {
   try {
     console.log('🔧 Building database query with context:', context);
+    
+    // Cap the limit at maxLimit to prevent excessive queries
+    const actualLimit = Math.min(Number(limit) || 1000, maxLimit);
+    console.log(`🔧 Using limit: ${actualLimit} (requested: ${limit}, max: ${maxLimit})`);
     
     let query = supabase
       .from(TABLE)
       .select('event_name,event_date,event_time,event_location,event_description,hosted_by,price,event_url,event_tags,usage_tags,industry_tags,women_specific,invite_only,event_name_and_link,outfit_category,updated_at')
       .order('updated_at', { ascending: false })
-      .limit(limit);
+      .limit(actualLimit);
 
     // Apply women-specific filter if needed
     if (context.is_women_specific) {
@@ -824,7 +828,7 @@ module.exports = async (req, res) => {
 
     // Step 2: Filter events based on context
     console.log('🔧 Step 2: Filtering events based on context...');
-    const filteredEvents = await filterEvents(supabase, context, Math.max(200, limit * 20));
+    const filteredEvents = await filterEvents(supabase, context, Math.max(200, limit * 20), 5000);
     console.log(`✅ Found ${filteredEvents.length} filtered events`);
 
     // Step 3: Use AI to refine and explain results

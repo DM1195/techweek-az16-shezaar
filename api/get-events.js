@@ -43,7 +43,7 @@ async function upsertEvents(supabase, events) {
   return { count: data?.length || 0 };
 }
 
-async function fetchEvents(supabase, { q, limit = 100 }) {
+async function fetchEvents(supabase, { q, limit = 100, maxLimit = 5000 }) {
   let query = supabase.from(TABLE).select('*').order('updated_at', { ascending: false });
   if (q) {
     const cleaned = sanitizeLikeValue(q);
@@ -53,7 +53,9 @@ async function fetchEvents(supabase, { q, limit = 100 }) {
       );
     }
   }
-  if (limit) query = query.limit(Number(limit));
+  // Cap the limit at maxLimit to prevent excessive queries
+  const actualLimit = Math.min(Number(limit) || 100, maxLimit);
+  if (actualLimit) query = query.limit(actualLimit);
   const { data, error } = await query;
   if (error) throw error;
   return data || [];
@@ -67,7 +69,7 @@ module.exports = async (req, res) => {
     if (req.method === 'GET') {
       const q = req.query.q || '';
       const limit = req.query.limit || 2000;
-      const data = await fetchEvents(supabase, { q, limit });
+      const data = await fetchEvents(supabase, { q, limit, maxLimit: 5000 });
       return res.status(200).json({ ok: true, count: data.length, events: data });
     }
 

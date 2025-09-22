@@ -7,13 +7,15 @@ try {
   OpenAI = null;
 }
 
-async function searchEvents(supabase, query, limit = 10) {
+async function searchEvents(supabase, query, limit = 10, maxLimit = 5000) {
   if (!query) return [];
+  // Cap the limit at maxLimit to prevent excessive queries
+  const actualLimit = Math.min(Number(limit) || 10, maxLimit);
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')
     .or(`event_name.ilike.%${query}%,event_description.ilike.%${query}%,event_location.ilike.%${query}%,hosted_by.ilike.%${query}%`)
-    .limit(limit);
+    .limit(actualLimit);
   if (error) throw error;
   return data || [];
 }
@@ -38,7 +40,7 @@ module.exports = async (req, res) => {
     }
 
     const supabase = getSupabaseClient();
-    const events = await searchEvents(supabase, message, limit);
+    const events = await searchEvents(supabase, message, limit, 5000);
     const plain = formatEventsPlain(events);
 
     const useLLM = llm && process.env.OPENAI_API_KEY && OpenAI;
