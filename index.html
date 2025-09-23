@@ -2923,6 +2923,19 @@
             }
             console.log('Debug - Final industryFocus:', industryFocus);
           }
+        } else if (aiReasoning.industries && aiReasoning.industries.length > 0) {
+          // Map individual industry tags to categories
+          const industryTags = aiReasoning.industries;
+          console.log('Debug - industryTags from AI:', industryTags);
+          
+          for (const [category, tags] of Object.entries(industryCategories)) {
+            if (industryTags.some(tag => tags.includes(tag))) {
+              console.log(`Debug - Found industry match for ${category}:`, industryTags);
+              industryFocus = category;
+              break;
+            }
+          }
+          console.log('Debug - Final industryFocus from industries:', industryFocus);
         }
         
         // Extract goals from the reasoning
