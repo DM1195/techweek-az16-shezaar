@@ -2909,14 +2909,19 @@
           const primaryCriteria = aiReasoning.relevance_suggestions.primary_criteria;
           if (Array.isArray(primaryCriteria) && primaryCriteria.length > 0) {
             const criteriaText = primaryCriteria.join(' ').toLowerCase();
+            console.log('Debug - primaryCriteria:', primaryCriteria);
+            console.log('Debug - criteriaText:', criteriaText);
             
             // Look for industry-specific terms in the criteria
             for (const [category, tags] of Object.entries(industryCategories)) {
-              if (tags.some(tag => criteriaText.includes(tag))) {
+              const matchingTags = tags.filter(tag => criteriaText.includes(tag));
+              if (matchingTags.length > 0) {
+                console.log(`Debug - Found match for ${category}:`, matchingTags);
                 industryFocus = category;
                 break;
               }
             }
+            console.log('Debug - Final industryFocus:', industryFocus);
           }
         }
         
