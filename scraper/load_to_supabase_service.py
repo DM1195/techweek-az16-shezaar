@@ -294,14 +294,22 @@ def main():
         supabase = get_supabase_client()
         print("✅ Supabase client initialized")
         
-        # Load events from CSV
+        # Load events from cleaned CSV
         events = load_events_from_csv(csv_path)
         
         if not events:
-            print("❌ No events loaded from CSV")
+            print("❌ No events loaded from cleaned CSV")
             return
         
-        # Upload events to Supabase (up to 5000 events)
+        # Clear existing events first
+        print("🗑️  Clearing existing events from database...")
+        try:
+            delete_response = supabase.table('Event List').delete().neq('id', 0).execute()
+            print("✅ Cleared existing events")
+        except Exception as e:
+            print(f"⚠️  Warning: Could not clear existing events: {e}")
+        
+        # Upload cleaned events to Supabase
         uploaded_count = upload_events_to_supabase(supabase, events, max_events=5000)
         
         print(f"\n🎉 Upload complete!")
