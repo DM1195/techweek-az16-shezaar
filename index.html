@@ -2894,23 +2894,27 @@
           return;
         }
         
-        // Extract industry focus from the reasoning
-        let industryFocus = 'Fashion & Beauty'; // default
-        if (aiReasoning.relevance_suggestions && aiReasoning.relevance_suggestions.primary_criteria) {
+        // Extract industry focus from AI reasoning
+        let industryFocus = 'All Industries'; // default
+        
+        // First check if user has selected industry filters
+        if (selectedIndustries.length > 0) {
+          if (selectedIndustries.length === 1) {
+            industryFocus = selectedIndustries[0];
+          } else {
+            industryFocus = selectedIndustries.join(', ');
+          }
+        } else if (aiReasoning.relevance_suggestions && aiReasoning.relevance_suggestions.primary_criteria) {
+          // Parse AI reasoning to find industry information
           const primaryCriteria = aiReasoning.relevance_suggestions.primary_criteria;
           if (Array.isArray(primaryCriteria) && primaryCriteria.length > 0) {
-            // Look for industry-specific terms in the primary criteria
-            const industryMatch = primaryCriteria.find(criteria => 
-              criteria.toLowerCase().includes('fashion') || 
-              criteria.toLowerCase().includes('industry')
-            );
-            if (industryMatch) {
-              // Find matching category
-              for (const [category, tags] of Object.entries(industryCategories)) {
-                if (tags.some(tag => industryMatch.toLowerCase().includes(tag))) {
-                  industryFocus = category;
-                  break;
-                }
+            const criteriaText = primaryCriteria.join(' ').toLowerCase();
+            
+            // Look for industry-specific terms in the criteria
+            for (const [category, tags] of Object.entries(industryCategories)) {
+              if (tags.some(tag => criteriaText.includes(tag))) {
+                industryFocus = category;
+                break;
               }
             }
           }
